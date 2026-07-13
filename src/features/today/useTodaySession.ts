@@ -1,15 +1,9 @@
 import { useMemo, useState } from 'react';
 import { adaptSession, type Day, type Duration, type Pain, type Track } from '../../core';
 import { WEEKS, RULES, CYCLES, LEVELS } from '../../data/mockData';
-import { isDemo } from '../../lib/supabase';
 
-// TODO (Paso 2 del README): cuando isDemo sea false, cargar dia y reglas
-// desde Supabase con la query del documento de arquitectura. El formato
-// de datos es identico, asi que el resto del hook no cambia.
-
-export function useTodaySession(track: Track, level: string) {
-  const dow = new Date().getDay();
-  const day: Day | null = WEEKS[track].find((d) => d.dow === dow) ?? null;
+export function useTodaySession(track: Track, level: string, dow: number | null) {
+  const day: Day | null = dow ? WEEKS[track].find((d) => d.dow === dow) ?? null : null;
 
   const [duration, setDuration] = useState<Duration | null>(null);
   const [pains, setPains] = useState<Pain[]>([]);
@@ -23,11 +17,11 @@ export function useTodaySession(track: Track, level: string) {
   const logBlock = (blockId: string, patch: Partial<{ done: boolean; value: string; comment: string }>) =>
     setLogs((prev) => ({
       ...prev,
-      [blockId]: { ...(prev[blockId] ?? { done: false, value: '', comment: '' }), ...patch },
+      [blockId]: { done: false, value: '', comment: '', ...prev[blockId], ...patch },
     }));
 
   return {
-    demo: isDemo,
+    week: WEEKS[track],
     day,
     cycle: CYCLES[track],
     levels: LEVELS[track],

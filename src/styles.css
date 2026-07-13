@@ -63,3 +63,8 @@ h3 { font-size: 14px; color: var(--accent); margin: 10px 0 4px; }
 .notice { background: var(--panel); border: 1px dashed var(--border); border-radius: 10px; padding: 11px 13px; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
 .notice.warn { border-color: var(--warn); color: var(--warn); border-style: solid; }
 .mobility h3 { color: var(--accent); }
+.onboard { display: flex; flex-direction: column; justify-content: center; min-height: 80vh; }
+.brand { font-size: 44px; letter-spacing: .3em; color: var(--accent); text-align: center; margin: 10px 0 14px; }
+.onboard .muted { text-align: center; }
+.loginput.big { font-size: 16px; padding: 14px 14px; margin-top: 10px; }
+.formerror { color: #f08a8a; font-size: 13px; margin-top: 8px; }

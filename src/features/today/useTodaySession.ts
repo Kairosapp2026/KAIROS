@@ -23,7 +23,7 @@ export function useTodaySession(track: Track, level: string) {
   const logBlock = (blockId: string, patch: Partial<{ done: boolean; value: string; comment: string }>) =>
     setLogs((prev) => ({
       ...prev,
-      [blockId]: { done: false, value: '', comment: '', ...prev[blockId], ...patch },
+      [blockId]: { ...(prev[blockId] ?? { done: false, value: '', comment: '' }), ...patch },
     }));
 
   return {

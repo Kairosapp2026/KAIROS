@@ -40,12 +40,20 @@ export function TodaySession({ track, level, levels, onLevelChange }: Props) {
         <p className="eyebrow">Semana {t.cycle.week} de {t.cycle.totalWeeks} - {t.cycle.block}</p>
         <h1>Tu semana</h1>
         <p className="muted">{t.cycle.goal}</p>
-        {t.week.map((d) => (
-          <button key={d.dow} className={`option ${d.dow === todayDow ? 'active' : ''}`} onClick={() => pickDay(d.dow)}>
-            <strong>{DAY_NAMES[d.dow]}{d.dow === todayDow ? ' - HOY' : ''}</strong>
-            <span>{d.focus}</span>
-          </button>
-        ))}
+        {t.week.map((d) => {
+          const st = t.dayStatus(d.dow);
+          const cls = st === 'done' ? 'dayok' : st === 'partial' ? 'daypart' : '';
+          return (
+            <button key={d.dow} className={`option ${cls} ${d.dow === todayDow ? 'active' : ''}`} onClick={() => pickDay(d.dow)}>
+              <strong>
+                {DAY_NAMES[d.dow]}{d.dow === todayDow ? ' - HOY' : ''}
+                {st === 'done' && <em className="badge ok">COMPLETADO</em>}
+                {st === 'partial' && <em className="badge part">EMPEZADO</em>}
+              </strong>
+              <span>{d.focus}</span>
+            </button>
+          );
+        })}
         <p className="note" style={{ marginTop: 10 }}>
           Empieza por el dia que toque o el que mejor encaje hoy: elegir dia tambien es adaptar el entreno.
         </p>
@@ -205,7 +213,10 @@ export function TodaySession({ track, level, levels, onLevelChange }: Props) {
         </section>
       )}
 
-      <button className="link" onClick={goWeek}>Volver a la semana</button>
+      <button className="cta" style={{ marginTop: 8 }} onClick={() => { t.finishDay(); goWeek(); }}>
+        Terminar sesion - Marcar dia completado
+      </button>
+      <button className="link" onClick={goWeek}>Volver a la semana sin terminar</button>
     </main>
   );
 }

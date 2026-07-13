@@ -69,3 +69,9 @@ h3 { font-size: 14px; color: var(--accent); margin: 10px 0 4px; }
 .loginput.big { font-size: 16px; padding: 14px 14px; margin-top: 10px; }
 .formerror { color: #f08a8a; font-size: 13px; margin-top: 8px; }
 .logobtn { background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; font-size: inherit; }
+
+.option.dayok { border-color: var(--accent); background: rgba(45, 212, 167, .07); }
+.option.daypart { border-color: var(--warn); background: rgba(240, 185, 90, .06); }
+.badge { font-style: normal; font-size: 10px; letter-spacing: .1em; font-weight: 800; border-radius: 4px; padding: 2px 7px; margin-left: 8px; vertical-align: middle; }
+.badge.ok { background: var(--accent); color: #06251c; }
+.badge.part { background: var(--warn); color: #2a1f08; }

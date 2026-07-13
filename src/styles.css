@@ -68,3 +68,4 @@ h3 { font-size: 14px; color: var(--accent); margin: 10px 0 4px; }
 .onboard .muted { text-align: center; }
 .loginput.big { font-size: 16px; padding: 14px 14px; margin-top: 10px; }
 .formerror { color: #f08a8a; font-size: 13px; margin-top: 8px; }
+.logobtn { background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; font-size: inherit; }

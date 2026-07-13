@@ -4,6 +4,7 @@ import { MOBILITY, PAIN_TYPES, ZONES } from '../../core';
 import { useTodaySession } from './useTodaySession';
 
 type Step = 'week' | 'level' | 'duration' | 'pain' | 'session';
+const DAY_NAMES = ['', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 const PAIN_LABEL: Record<string, string> = { calentar: 'al calentar', final: 'rango final', carga: 'en carga' };
 const zoneName = (id: string) => ZONES.find((z) => z.id === id)?.name ?? id;
 
@@ -33,7 +34,6 @@ export function TodaySession({ track, level, levels, onLevelChange }: Props) {
   const goWeek = () => { setStep('week'); setDow(null); t.setDuration(null); t.setPains([]); };
   const pickDay = (d: number) => { setDow(d); t.setDuration(null); t.setPains([]); setStep('level'); };
 
-  /* ---------- Semana completa ---------- */
   if (step === 'week' || !t.day)
     return (
       <main className="screen">
@@ -42,7 +42,7 @@ export function TodaySession({ track, level, levels, onLevelChange }: Props) {
         <p className="muted">{t.cycle.goal}</p>
         {t.week.map((d) => (
           <button key={d.dow} className={`option ${d.dow === todayDow ? 'active' : ''}`} onClick={() => pickDay(d.dow)}>
-            <strong>{d.name}{d.dow === todayDow ? ' - HOY' : ''}</strong>
+            <strong>{DAY_NAMES[d.dow]}{d.dow === todayDow ? ' - HOY' : ''}</strong>
             <span>{d.focus}</span>
           </button>
         ))}
@@ -52,14 +52,13 @@ export function TodaySession({ track, level, levels, onLevelChange }: Props) {
       </main>
     );
 
-  /* ---------- Paso 1: nivel ---------- */
   if (step === 'level')
     return (
       <main className="screen">
-        <p className="eyebrow">{t.day.name} - {t.day.focus} - paso 1 de 3</p>
+        <p className="eyebrow">{DAY_NAMES[t.day.dow]} - {t.day.focus} - paso 1 de 3</p>
         <h1>{track === 'HX' ? 'En que division entrenas?' : 'A que nivel entrenas hoy?'}</h1>
         <p className="muted">
-          {level ? 'Confirma tu nivel habitual o cambialo solo por hoy.' : 'Elige tu punto de partida. Podras cambiarlo cualquier dia.'}
+          {level ? 'Confirma tu nivel habitual o cambialo solo por hoy.' : 'Elige tu punto de partida.'}
         </p>
         {levels.map((l) => (
           <button key={l} className={`option ${level === l ? 'active' : ''}`}
@@ -72,11 +71,10 @@ export function TodaySession({ track, level, levels, onLevelChange }: Props) {
       </main>
     );
 
-  /* ---------- Paso 2: tiempo ---------- */
   if (step === 'duration')
     return (
       <main className="screen">
-        <p className="eyebrow">{t.day.name} - paso 2 de 3</p>
+        <p className="eyebrow">{DAY_NAMES[t.day.dow]} - paso 2 de 3</p>
         <h1>Cuanto tienes hoy?</h1>
         <p className="muted">
           Bloque de {t.cycle.block.toLowerCase()} (semana {t.cycle.week}/{t.cycle.totalWeeks}). Si eliges 1h,
@@ -92,11 +90,10 @@ export function TodaySession({ track, level, levels, onLevelChange }: Props) {
       </main>
     );
 
-  /* ---------- Paso 3: molestias ---------- */
   if (step === 'pain')
     return (
       <main className="screen">
-        <p className="eyebrow">{t.day.name} - paso 3 de 3</p>
+        <p className="eyebrow">{DAY_NAMES[t.day.dow]} - paso 3 de 3</p>
         <h1>Alguna molestia hoy?</h1>
         <p className="muted">Adaptamos ejercicios y anadimos movilidad dirigida al final.</p>
         {!pendingZone ? (
@@ -134,11 +131,10 @@ export function TodaySession({ track, level, levels, onLevelChange }: Props) {
       </main>
     );
 
-  /* ---------- Sesion adaptada ---------- */
   const s = t.session!;
   return (
     <main className="screen">
-      <p className="eyebrow">{t.day.name} - Semana {t.cycle.week}/{t.cycle.totalWeeks} - {t.cycle.block} - {level}</p>
+      <p className="eyebrow">{DAY_NAMES[t.day.dow]} - Semana {t.cycle.week}/{t.cycle.totalWeeks} - {t.cycle.block} - {level}</p>
       <h1>{t.day.focus}</h1>
       <p className="why">{t.day.why}</p>
 

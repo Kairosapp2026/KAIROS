@@ -1,25 +1,28 @@
+
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { Track } from '../../core';
 import { LEVELS } from '../../data/mockData';
 import { supabase } from '../../lib/supabase';
 import { TodaySession } from '../today/TodaySession';
+import { CoachPanel } from '../coach/CoachPanel';
+import { Landing } from '../landing/Landing';
 
 interface Profile {
   id: string;
   display_name: string;
   track: Track;
   level: string | null;
+  role: string | null;
 }
 
 const TRACK_INFO: Record<Track, { name: string; desc: string }> = {
-  CF: { name: 'CrossFit', desc: 'Fuerza, halterofilia, gimnásticos y WODs con periodización explicada. Niveles: Escalado, Intermedio, RX y Élite.' },
+  CF: { name: 'CrossFit', desc: 'Fuerza, halterofilia, gimnasticos y WODs con periodizacion explicada. Niveles: Escalado, Intermedio, RX y Elite.' },
   HX: { name: 'HYROX', desc: 'Carrera comprometida, trineos, estaciones y simulaciones race pace. Divisiones: Open (individual) y Pro.' },
 };
 
-/* ---------------- Pantalla de acceso ---------------- */
-function AuthScreen() {
-  const [mode, setMode] = useState<'signup' | 'signin'>('signup');
+function AuthScreen({ initialMode, onBack }: { initialMode: 'signup' | 'signin'; onBack: () => void }) {
+  const [mode, setMode] = useState<'signup' | 'signin'>(initialMode);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,8 +32,8 @@ function AuthScreen() {
   const submit = async () => {
     setError('');
     if (mode === 'signup' && name.trim().length < 2) return setError('Escribe tu nombre.');
-    if (!email.includes('@')) return setError('Ese email no parece válido.');
-    if (password.length < 6) return setError('La contraseña necesita al menos 6 caracteres.');
+    if (!email.includes('@')) return setError('Ese email no parece valido.');
+    if (password.length < 6) return setError('La contrasena necesita al menos 6 caracteres.');
     setBusy(true);
     const sb = supabase!;
     const { error: err } =
@@ -38,7 +41,7 @@ function AuthScreen() {
         ? await sb.auth.signUp({ email, password, options: { data: { display_name: name.trim() } } })
         : await sb.auth.signInWithPassword({ email, password });
     setBusy(false);
-    if (err) setError(err.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos.' : err.message);
+    if (err) setError(err.message === 'Invalid login credentials' ? 'Email o contrasena incorrectos.' : err.message);
   };
 
   return (
@@ -46,7 +49,7 @@ function AuthScreen() {
       <p className="eyebrow">{mode === 'signup' ? 'Bienvenido' : 'Hola de nuevo'}</p>
       <h1 className="brand">KAIROS</h1>
       <p className="muted" style={{ fontSize: 16 }}>
-        La única programación que se adapta a tu día, no al revés.
+        La unica programacion que se adapta a tu dia, no al reves.
       </p>
       {mode === 'signup' && (
         <input className="loginput big" placeholder="Tu nombre" value={name}
@@ -55,34 +58,36 @@ function AuthScreen() {
       <input className="loginput big" type="email" placeholder="Tu email" value={email}
         onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
       <input className="loginput big" type="password"
-        placeholder={mode === 'signup' ? 'Crea una contraseña (mín. 6)' : 'Tu contraseña'}
+        placeholder={mode === 'signup' ? 'Crea una contrasena (min. 6)' : 'Tu contrasena'}
         value={password} onChange={(e) => setPassword(e.target.value)}
         autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
       {error && <p className="formerror">{error}</p>}
       <button className="cta" disabled={busy} onClick={submit}>
-        {busy ? 'Un momento…' : mode === 'signup' ? 'Crear mi cuenta' : 'Entrar'}
+        {busy ? 'Un momento...' : mode === 'signup' ? 'Crear mi cuenta' : 'Entrar'}
       </button>
       {mode === 'signup' && (
         <p className="note" style={{ textAlign: 'center', marginTop: 12 }}>
-          7 días gratis · después 14,99 €/mes · cancela cuando quieras
+          7 dias gratis - despues 14,99 EUR/mes - cancela cuando quieras
         </p>
       )}
       <button className="link" style={{ textAlign: 'center', width: '100%' }}
         onClick={() => { setError(''); setMode(mode === 'signup' ? 'signin' : 'signup'); }}>
-        {mode === 'signup' ? '¿Ya tienes cuenta? Entra aquí' : '¿Aún sin cuenta? Regístrate'}
+        {mode === 'signup' ? 'Ya tienes cuenta? Entra aqui' : 'Aun sin cuenta? Registrate'}
+      </button>
+      <button className="link" style={{ textAlign: 'center', width: '100%' }} onClick={onBack}>
+        Volver
       </button>
     </main>
   );
 }
 
-/* ---------------- Elección de programación (una vez) ---------------- */
 function TrackChoice({ onChoose, busy }: { onChoose: (t: Track) => void; busy: boolean }) {
   return (
     <main className="screen">
-      <p className="eyebrow">Último paso</p>
-      <h1>Elige tu programación</h1>
+      <p className="eyebrow">Ultimo paso</p>
+      <h1>Elige tu programacion</h1>
       <p className="muted">
-        Tu elección se mantiene el mes completo: un bloque de entrenamiento necesita
+        Tu eleccion se mantiene el mes completo: un bloque de entrenamiento necesita
         continuidad para funcionar.
       </p>
       {(Object.keys(TRACK_INFO) as Track[]).map((tk) => (
@@ -95,13 +100,14 @@ function TrackChoice({ onChoose, busy }: { onChoose: (t: Track) => void; busy: b
   );
 }
 
-/* ---------------- App autenticada ---------------- */
 export function AuthApp() {
   const sb = supabase!;
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [busy, setBusy] = useState(false);
+  const [coachView, setCoachView] = useState<'panel' | 'atleta'>('panel');
+  const [gate, setGate] = useState<'landing' | 'signup' | 'signin'>('landing');
 
   useEffect(() => {
     sb.auth.getSession().then(({ data }) => { setSession(data.session); setLoading(false); });
@@ -132,24 +138,42 @@ export function AuthApp() {
     await sb.from('profiles').update({ level }).eq('id', profile.id);
   };
 
-  if (loading) return <main className="screen"><p className="muted">Cargando…</p></main>;
-  if (!session) return <AuthScreen />;
+  if (loading) return <main className="screen"><p className="muted">Cargando...</p></main>;
+
+  if (!session) {
+    if (gate === 'landing')
+      return <Landing onStart={() => setGate('signup')} onLogin={() => setGate('signin')} />;
+    return <AuthScreen initialMode={gate} onBack={() => setGate('landing')} />;
+  }
+
   if (!profile) return <TrackChoice onChoose={chooseTrack} busy={busy} />;
 
+  const isCoach = profile.role === 'coach';
   const track = profile.track;
+
   return (
     <div className="app">
       <header className="topbar">
-        <span className="logo">KAIROS</span>
+        <button className="logo logobtn" onClick={() => window.location.assign('/')}>KAIROS</button>
         <div className="switchers">
-          <span className="chip on">{track === 'CF' ? 'CrossFit' : 'HYROX'}</span>
+          {isCoach && (
+            <button className={`chip ${coachView === 'panel' ? 'on' : ''}`}
+              onClick={() => setCoachView(coachView === 'panel' ? 'atleta' : 'panel')}>
+              {coachView === 'panel' ? 'Ver como atleta' : 'Panel de coach'}
+            </button>
+          )}
+          {(!isCoach || coachView === 'atleta') && (
+            <span className="chip on">{track === 'HX' ? 'HYROX' : 'CrossFit'}</span>
+          )}
           <button className="chip" onClick={() => sb.auth.signOut()}>
-            {profile.display_name.split(' ')[0]} · Salir
+            {profile.display_name.split(' ')[0]} - Salir
           </button>
         </div>
       </header>
-      <TodaySession key={track} track={track} level={profile.level}
-        levels={LEVELS[track]} onLevelChange={setLevel} />
+      {isCoach && coachView === 'panel'
+        ? <CoachPanel />
+        : <TodaySession key={track} track={track} level={profile.level}
+            levels={LEVELS[track]} onLevelChange={setLevel} />}
     </div>
   );
 }

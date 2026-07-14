@@ -75,3 +75,22 @@ h3 { font-size: 14px; color: var(--accent); margin: 10px 0 4px; }
 .badge { font-style: normal; font-size: 10px; letter-spacing: .1em; font-weight: 800; border-radius: 4px; padding: 2px 7px; margin-left: 8px; vertical-align: middle; }
 .badge.ok { background: var(--accent); color: #06251c; }
 .badge.part { background: var(--warn); color: #2a1f08; }
+
+.landing { padding-bottom: 60px; }
+.landing section { margin-bottom: 44px; }
+.hero { text-align: center; padding-top: 24px; }
+.herotext { color: #c4cddc; font-size: 16px; line-height: 1.6; margin: 12px 0 20px; }
+.landing h2 { font-size: 24px; margin: 4px 0 14px; }
+.center { text-align: center; }
+.demochips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 14px 0 8px; }
+.demochip { border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; padding: 7px 14px; font-size: 13.5px; font-weight: 600; }
+.demochip.warn { border-color: var(--warn); color: var(--warn); }
+.demoarrow { text-align: center; color: #8b96ab; font-size: 13px; margin: 6px 0 12px; }
+.demoblock { text-align: left; }
+.demoname { font-size: 18px; margin: 8px 0 2px; }
+.steps .step { display: flex; gap: 14px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; align-items: flex-start; }
+.stepnum { min-width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #06251c; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.steps p { color: var(--muted); font-size: 13.5px; margin-top: 3px; line-height: 1.5; }
+.pricing { text-align: center; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 22px 16px; }
+.pricing h2 { color: var(--accent); }
+.landfoot { text-align: center; padding-top: 8px; }

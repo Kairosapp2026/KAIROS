@@ -226,3 +226,8 @@ h3 { font-size: 14px; color: var(--accent); margin: 10px 0 4px; }
 .badge.ok { background: var(--grad); }
 .forminfo { color: var(--accent); font-size: 13.5px; margin-top: 8px; line-height: 1.5; }
 .forminfo { color: var(--accent); font-size: 13.5px; margin-top: 8px; line-height: 1.5; }
+
+.coachweek { display: flex; gap: 8px; }
+.coachday { flex: 1; text-align: center; padding: 12px 0; border-radius: 10px; border: 1px solid var(--border); background: var(--panel); font-weight: 800; color: var(--muted); }
+.coachday.ok { border-color: var(--accent); color: var(--accent); background: rgba(45, 212, 167, .1); }
+.coachday.part { border-color: var(--warn); color: var(--warn); background: rgba(240, 185, 90, .08); }

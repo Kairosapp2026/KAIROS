@@ -160,3 +160,69 @@ h3 { font-size: 14px; color: var(--accent); margin: 10px 0 4px; }
 .eyebrow { color: #2dd4a7; }
 .badge.ok { background: var(--grad); }
 .option.active { box-shadow: 0 0 0 1px rgba(45, 212, 167, .35) inset; }
+/* ===== Kairos v2: energia visual (verde + violeta electrico) ===== */
+:root {
+  --accent2: #8b5cf6;
+  --grad: linear-gradient(100deg, #2dd4a7 0%, #8b5cf6 100%);
+}
+
+/* Hero con resplandor */
+.hero {
+  position: relative;
+  padding-top: 40px;
+  padding-bottom: 10px;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; left: 50%;
+  transform: translateX(-50%);
+  width: 420px; height: 320px;
+  background: radial-gradient(circle, rgba(45, 212, 167, .22) 0%, rgba(139, 92, 246, .14) 45%, transparent 70%);
+  pointer-events: none;
+}
+.hero > * { position: relative; }
+
+/* Marca en degradado */
+.brand {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Botones principales con degradado y brillo */
+.cta {
+  background: var(--grad);
+  color: #08130f;
+  box-shadow: 0 6px 24px rgba(45, 212, 167, .28);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.cta:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(139, 92, 246, .35); }
+.cta:active { transform: translateY(0); }
+
+/* Pasos y chips con el nuevo acento */
+.stepnum { background: var(--grad); color: #08130f; }
+.demochip.warn { border-color: var(--accent2); color: #b9a3ff; }
+.demoarrow { color: var(--accent2); font-weight: 600; }
+
+/* Tarjeta de precio con borde degradado */
+.pricing {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--panel), var(--panel)) padding-box,
+    var(--grad) border-box;
+}
+.pricing h2 {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Detalles dentro de la app */
+.eyebrow { color: #2dd4a7; }
+.badge.ok { background: var(--grad); }
+.forminfo { color: var(--accent); font-size: 13.5px; margin-top: 8px; line-height: 1.5; }
+.forminfo { color: var(--accent); font-size: 13.5px; margin-top: 8px; line-height: 1.5; }

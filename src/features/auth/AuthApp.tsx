@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { Track } from '../../core';
@@ -21,21 +20,37 @@ const TRACK_INFO: Record<Track, { name: string; desc: string }> = {
   HX: { name: 'HYROX', desc: 'Carrera comprometida, trineos, estaciones y simulaciones race pace. Divisiones: Open (individual) y Pro.' },
 };
 
-function AuthScreen({ initialMode, onBack }: { initialMode: 'signup' | 'signin'; onBack: () => void }) {
-  const [mode, setMode] = useState<'signup' | 'signin'>(initialMode);
+type AuthMode = 'signup' | 'signin' | 'reset';
+
+function AuthScreen({ initialMode, onBack }: { initialMode: AuthMode; onBack: () => void }) {
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
-    setError('');
+    setError(''); setInfo('');
+    const sb = supabase!;
+
+    if (mode === 'reset') {
+      if (!email.includes('@')) return setError('Escribe el email de tu cuenta.');
+      setBusy(true);
+      const { error: err } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      });
+      setBusy(false);
+      if (err) setError(err.message);
+      else setInfo('Hecho. Revisa tu correo (tambien spam) y abre el enlace para crear una contrasena nueva.');
+      return;
+    }
+
     if (mode === 'signup' && name.trim().length < 2) return setError('Escribe tu nombre.');
     if (!email.includes('@')) return setError('Ese email no parece valido.');
     if (password.length < 6) return setError('La contrasena necesita al menos 6 caracteres.');
     setBusy(true);
-    const sb = supabase!;
     const { error: err } =
       mode === 'signup'
         ? await sb.auth.signUp({ email, password, options: { data: { display_name: name.trim() } } })
@@ -46,36 +61,95 @@ function AuthScreen({ initialMode, onBack }: { initialMode: 'signup' | 'signin';
 
   return (
     <main className="screen onboard">
-      <p className="eyebrow">{mode === 'signup' ? 'Bienvenido' : 'Hola de nuevo'}</p>
-      <h1 className="brand">KAIROS</h1>
-      <p className="muted" style={{ fontSize: 16 }}>
-        La unica programacion que se adapta a tu dia, no al reves.
+      <p className="eyebrow">
+        {mode === 'signup' ? 'Bienvenido' : mode === 'signin' ? 'Hola de nuevo' : 'Recuperar acceso'}
       </p>
+      <h1 className="brand">KAIROS</h1>
+      {mode === 'reset' ? (
+        <p className="muted" style={{ fontSize: 15 }}>
+          Dinos tu email y te enviamos un enlace para crear una contrasena nueva.
+        </p>
+      ) : (
+        <p className="muted" style={{ fontSize: 16 }}>
+          La unica programacion que se adapta a tu dia, no al reves.
+        </p>
+      )}
+
       {mode === 'signup' && (
         <input className="loginput big" placeholder="Tu nombre" value={name}
           onChange={(e) => setName(e.target.value)} autoComplete="name" />
       )}
       <input className="loginput big" type="email" placeholder="Tu email" value={email}
         onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
-      <input className="loginput big" type="password"
-        placeholder={mode === 'signup' ? 'Crea una contrasena (min. 6)' : 'Tu contrasena'}
-        value={password} onChange={(e) => setPassword(e.target.value)}
-        autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
+      {mode !== 'reset' && (
+        <input className="loginput big" type="password"
+          placeholder={mode === 'signup' ? 'Crea una contrasena (min. 6)' : 'Tu contrasena'}
+          value={password} onChange={(e) => setPassword(e.target.value)}
+          autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
+      )}
+
       {error && <p className="formerror">{error}</p>}
+      {info && <p className="forminfo">{info}</p>}
+
       <button className="cta" disabled={busy} onClick={submit}>
-        {busy ? 'Un momento...' : mode === 'signup' ? 'Crear mi cuenta' : 'Entrar'}
+        {busy ? 'Un momento...'
+          : mode === 'signup' ? 'Crear mi cuenta'
+          : mode === 'signin' ? 'Entrar'
+          : 'Enviarme el enlace'}
       </button>
+
       {mode === 'signup' && (
         <p className="note" style={{ textAlign: 'center', marginTop: 12 }}>
           7 dias gratis - despues 14,99 EUR/mes - cancela cuando quieras
         </p>
       )}
+
+      {mode === 'signin' && (
+        <button className="link" style={{ textAlign: 'center', width: '100%' }}
+          onClick={() => { setError(''); setInfo(''); setMode('reset'); }}>
+          Olvide mi contrasena
+        </button>
+      )}
       <button className="link" style={{ textAlign: 'center', width: '100%' }}
-        onClick={() => { setError(''); setMode(mode === 'signup' ? 'signin' : 'signup'); }}>
+        onClick={() => { setError(''); setInfo(''); setMode(mode === 'signup' ? 'signin' : 'signup'); }}>
         {mode === 'signup' ? 'Ya tienes cuenta? Entra aqui' : 'Aun sin cuenta? Registrate'}
       </button>
       <button className="link" style={{ textAlign: 'center', width: '100%' }} onClick={onBack}>
         Volver
+      </button>
+    </main>
+  );
+}
+
+function NewPasswordScreen({ onDone }: { onDone: () => void }) {
+  const [p1, setP1] = useState('');
+  const [p2, setP2] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setError('');
+    if (p1.length < 6) return setError('Minimo 6 caracteres.');
+    if (p1 !== p2) return setError('Las contrasenas no coinciden.');
+    setBusy(true);
+    const { error: err } = await supabase!.auth.updateUser({ password: p1 });
+    setBusy(false);
+    if (err) setError(err.message);
+    else onDone();
+  };
+
+  return (
+    <main className="screen onboard">
+      <p className="eyebrow">Nueva contrasena</p>
+      <h1 className="brand">KAIROS</h1>
+      <p className="muted" style={{ fontSize: 15 }}>Crea tu nueva contrasena y seguimos entrenando.</p>
+      <input className="loginput big" type="password" placeholder="Nueva contrasena (min. 6)"
+        value={p1} onChange={(e) => setP1(e.target.value)} autoComplete="new-password" />
+      <input className="loginput big" type="password" placeholder="Repitela"
+        value={p2} onChange={(e) => setP2(e.target.value)} autoComplete="new-password" />
+      {error && <p className="formerror">{error}</p>}
+      <button className="cta" disabled={busy} onClick={submit}>
+        {busy ? 'Guardando...' : 'Guardar y entrar'}
       </button>
     </main>
   );
@@ -108,10 +182,14 @@ export function AuthApp() {
   const [busy, setBusy] = useState(false);
   const [coachView, setCoachView] = useState<'panel' | 'atleta'>('panel');
   const [gate, setGate] = useState<'landing' | 'signup' | 'signin'>('landing');
+  const [recovery, setRecovery] = useState(false);
 
   useEffect(() => {
     sb.auth.getSession().then(({ data }) => { setSession(data.session); setLoading(false); });
-    const { data: sub } = sb.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data: sub } = sb.auth.onAuthStateChange((event, s) => {
+      setSession(s);
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true);
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -139,6 +217,8 @@ export function AuthApp() {
   };
 
   if (loading) return <main className="screen"><p className="muted">Cargando...</p></main>;
+
+  if (recovery && session) return <NewPasswordScreen onDone={() => setRecovery(false)} />;
 
   if (!session) {
     if (gate === 'landing')

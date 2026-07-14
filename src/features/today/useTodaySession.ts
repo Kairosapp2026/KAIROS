@@ -50,15 +50,15 @@ export function useTodaySession(track: Track, level: string, dow: number | null)
     [day, duration, pains, level],
   );
 
-  useEffect(() => {
-    if (!sb || !userId || !dow || !session || !duration) return;
+  const confirmCheckin = () => {
+    if (!sb || !userId || !dow || !duration) return;
     const key = track + '-' + dow + '-' + new Date().toDateString();
     if (checkinSent.current === key) return;
     checkinSent.current = key;
     sb.from('checkins')
       .insert({ user_id: userId, track, dow, duration, pains })
       .then(() => {});
-  }, [session, userId]);
+  };
 
   const statusKey = (d: number) => track + '-' + d;
   const dayStatus = (d: number): DayStatus | null => statuses[statusKey(d)] ?? null;
@@ -100,6 +100,6 @@ export function useTodaySession(track: Track, level: string, dow: number | null)
     pains, setPains,
     session,
     logs, logBlock,
-    dayStatus, finishDay,
+    dayStatus, finishDay, confirmCheckin,
   };
 }

@@ -118,7 +118,7 @@ export function TodaySession({ track, level, levels, onLevelChange }: Props) {
                 );
               })}
             </div>
-            <button className="cta" onClick={() => setStep('session')}>
+            <button className="cta" onClick={() => { t.confirmCheckin(); setStep('session'); }}>
               {t.pains.length ? 'Adaptar mi entreno' : 'Sin molestias - Ver entreno'}
             </button>
           </>

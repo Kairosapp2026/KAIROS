@@ -13,6 +13,56 @@ interface Profile {
   track: Track;
   level: string | null;
   role: string | null;
+  sub_status: string | null;
+  current_period_end: string | null;
+  created_at: string;
+}
+
+const PAY_URL = 'https://buy.stripe.com/test_9B6bIT7rS3A5ad9gnq7IY00';
+const PORTAL_URL = 'https://billing.stripe.com/p/login/test_9B6bIT7rS3A5ad9gnq7IY00';
+
+const TRIAL_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function accessInfo(p: Profile): { ok: boolean; mode: 'trial' | 'active' | 'expired'; daysLeft: number } {
+  if (p.role === 'coach') return { ok: true, mode: 'active', daysLeft: 999 };
+  if (p.sub_status === 'active' && p.current_period_end) {
+    const left = Math.ceil((new Date(p.current_period_end).getTime() - Date.now()) / DAY_MS);
+    return left > 0 ? { ok: true, mode: 'active', daysLeft: left } : { ok: false, mode: 'expired', daysLeft: 0 };
+  }
+  const trialEnd = new Date(p.created_at).getTime() + TRIAL_DAYS * DAY_MS;
+  const left = Math.ceil((trialEnd - Date.now()) / DAY_MS);
+  return left > 0 ? { ok: true, mode: 'trial', daysLeft: left } : { ok: false, mode: 'expired', daysLeft: 0 };
+}
+
+function PaywallScreen({ name, email, onRefresh, onSignOut }: { name: string; email: string; onRefresh: () => void; onSignOut: () => void }) {
+  const payUrl = PAY_URL + '?prefilled_email=' + encodeURIComponent(email);
+  return (
+    <main className="screen onboard">
+      <p className="eyebrow">Tu acceso ha caducado</p>
+      <h1 className="brand">KAIROS</h1>
+      <p className="muted" style={{ fontSize: 15 }}>
+        {name}, tu semana gratis o tu mes de Kairos ha terminado. Renueva tu plan y sigue
+        entrenando con tu programacion adaptada, tus marcas y tu historial intactos.
+      </p>
+      <div className="pricing" style={{ marginTop: 8 }}>
+        <h2>14,99 EUR al mes</h2>
+        <p className="muted center">Acceso completo. Sin permanencia. Cancela cuando quieras.</p>
+      </div>
+      <a className="cta" style={{ marginTop: 14, display: 'block', textAlign: 'center', textDecoration: 'none' }}
+        href={payUrl} target="_blank" rel="noreferrer">
+        Renovar mi plan - 14,99 EUR/mes
+      </a>
+      <button className="link" style={{ textAlign: 'center', width: '100%' }} onClick={onRefresh}>
+        Ya he pagado - Actualizar mi acceso
+      </button>
+      <a className="link" style={{ textAlign: 'center', width: '100%', display: 'block' }}
+        href={PORTAL_URL} target="_blank" rel="noreferrer">
+        Gestionar o cancelar mi suscripcion
+      </a>
+      <button className="link" style={{ textAlign: 'center', width: '100%' }} onClick={onSignOut}>Cerrar sesion</button>
+    </main>
+  );
 }
 
 const TRACK_INFO: Record<Track, { name: string; desc: string }> = {
@@ -193,11 +243,12 @@ export function AuthApp() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
+  const loadProfile = () => {
     if (!session) { setProfile(null); return; }
     sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle()
       .then(({ data }) => setProfile((data as Profile) ?? null));
-  }, [session]);
+  };
+  useEffect(loadProfile, [session]);
 
   const chooseTrack = async (track: Track) => {
     if (!session) return;
@@ -228,6 +279,17 @@ export function AuthApp() {
 
   if (!profile) return <TrackChoice onChoose={chooseTrack} busy={busy} />;
 
+  const access = accessInfo(profile);
+  if (!access.ok)
+    return (
+      <PaywallScreen
+        name={profile.display_name.split(' ')[0]}
+        email={session.user.email ?? ''}
+        onRefresh={loadProfile}
+        onSignOut={() => sb.auth.signOut()}
+      />
+    );
+
   const isCoach = profile.role === 'coach';
   const track = profile.track;
 
@@ -250,6 +312,13 @@ export function AuthApp() {
           </button>
         </div>
       </header>
+      {!isCoach && access.mode === 'trial' && (
+        <div className="demobar">
+          Semana gratis: {access.daysLeft === 1 ? 'ultimo dia' : 'quedan ' + access.daysLeft + ' dias'} - despues 14,99 EUR/mes
+          {' - '}
+          <a href={PAY_URL + '?prefilled_email=' + encodeURIComponent(session.user.email ?? '')} target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>activar ahora</a>
+        </div>
+      )}
       {isCoach && coachView === 'panel'
         ? <CoachPanel />
         : <TodaySession key={track} track={track} level={profile.level}

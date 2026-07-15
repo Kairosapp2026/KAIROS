@@ -250,6 +250,16 @@ export function AuthApp() {
   };
   useEffect(loadProfile, [session]);
 
+  useEffect(() => {
+    const onFocus = () => loadProfile();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [session]);
+
   const chooseTrack = async (track: Track) => {
     if (!session) return;
     setBusy(true);

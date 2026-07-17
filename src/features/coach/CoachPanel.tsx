@@ -22,6 +22,87 @@ const VALID_TAGS = ['NUCLEO', 'COMPLEMENTARIO', 'EXTRA'];
 const FORMATS = ['FUERZA', 'HALTEROFILIA', 'SKILL', 'AMRAP', 'EMOM', 'FOR_TIME', 'INTERVALOS', 'ACCESORIO', 'TEAM', 'RECUPERACION'];
 const LEVEL_KEYS = ['ESCALADO', 'INTERMEDIO', 'RX', 'ELITE', 'OPEN', 'PRO'];
 
+const AUTO_TAGS: [RegExp, string[]][] = [
+  // --- Sentadilla y derivados ---
+  [/back squat|sentadilla trasera/i, ['squat', 'raquis_carga']],
+  [/front squat|sentadilla frontal/i, ['squat', 'raquis_carga', 'front_rack']],
+  [/overhead squat|ohs/i, ['squat', 'push_vertical']],
+  [/thruster/i, ['squat', 'push_vertical', 'front_rack']],
+  [/wall ?ball/i, ['squat', 'push_vertical']],
+  [/pistol/i, ['squat', 'unilateral_rodilla']],
+  [/goblet|air squat|sentadilla/i, ['squat']],
+  [/box step|step[- ]?over|step[- ]?up/i, ['unilateral_rodilla']],
+  [/split squat|zancada|lunge|estocada|bulgar/i, ['unilateral_rodilla']],
+  [/sandbag lunge|zancada con saco/i, ['unilateral_rodilla', 'raquis_carga']],
+  // --- Bisagra y tirones de suelo ---
+  [/sumo deadlift high pull|sdhp/i, ['hinge', 'pull_vertical']],
+  [/deadlift|peso muerto|rdl|rumano/i, ['hinge', 'raquis_carga']],
+  [/good ?morning/i, ['hinge', 'raquis_carga']],
+  [/rack pull|hip thrust|puente de gluteo|glute bridge/i, ['hinge']],
+  [/back extension|extension lumbar|nordic/i, ['hinge']],
+  [/swing/i, ['hinge']],
+  [/americana/i, ['push_vertical']],
+  // --- Halterofilia ---
+  [/devil press|man ?maker/i, ['hinge', 'push_vertical']],
+  [/clean and jerk|clean & jerk/i, ['hinge', 'front_rack', 'push_vertical']],
+  [/clean|cargada/i, ['hinge', 'front_rack']],
+  [/snatch|arrancada/i, ['hinge', 'push_vertical']],
+  [/turkish get[- ]?up|tgu|windmill/i, ['push_vertical']],
+  // --- Empuje vertical e invertidos ---
+  [/jerk|push press|press estricto|strict press|shoulder press|db press|z-press|landmine|arnold/i, ['push_vertical']],
+  [/hspu|handstand push/i, ['push_vertical', 'invertido', 'muneca_ext']],
+  [/wall walk|handstand|pino/i, ['invertido', 'muneca_ext']],
+  [/front rack|rack frontal/i, ['front_rack']],
+  // --- Empuje horizontal ---
+  [/bench press|press banca|floor press/i, ['push_horizontal']],
+  [/push[- ]?up|flexion/i, ['push_horizontal', 'muneca_ext']],
+  [/fondos|ring dip|\bdips?\b/i, ['push_horizontal']],
+  // --- Tirones y colgados ---
+  [/rope climb|cuerda/i, ['colgado', 'pull_vertical', 'grip']],
+  [/toes to bar|t2b|knee raise|k2e/i, ['colgado', 'core_flexion']],
+  [/muscle[- ]?up/i, ['colgado', 'pull_vertical']],
+  [/pull[- ]?up|dominada|chin[- ]?up|chest to bar|c2b/i, ['colgado', 'pull_vertical']],
+  [/jalon|lat pull/i, ['pull_vertical']],
+  [/kipping|colgado|hang/i, ['colgado']],
+  [/face pull|pull apart|band pull/i, ['pull_horizontal']],
+  [/ring row|remo con anillas|remo invertido|bent over|remo con barra|remo con mancuerna|renegade/i, ['pull_horizontal']],
+  // --- Ergometros y monoestructural ---
+  [/ski ?erg|\bski\b/i, ['pull_vertical', 'ciclico_bajo']],
+  [/\bremo\b|\brow\b|rowing/i, ['pull_horizontal']],
+  [/\bbici\b|bike|assault|echo/i, ['ciclico_bajo']],
+  [/burpee broad jump|burpee salto/i, ['impacto', 'push_horizontal']],
+  [/burpee/i, ['impacto', 'push_horizontal']],
+  [/double under|single under|comba/i, ['impacto']],
+  [/box jump|salto al cajon|broad jump|salto/i, ['impacto']],
+  [/carrera|correr|\brun\b|sprint|shuttle/i, ['impacto', 'ciclico_alto']],
+  // --- Trineos y acarreos (HYROX / strongman) ---
+  [/sled push|empuje de trineo|empujar trineo/i, ['squat']],
+  [/sled pull|arrastre de trineo|arrastrar trineo/i, ['pull_horizontal', 'grip']],
+  [/trineo/i, ['squat']],
+  [/farmer|acarreo|carry/i, ['grip']],
+  [/sandbag|saco|bear hug/i, ['raquis_carga', 'grip']],
+  [/yoke|yugo/i, ['raquis_carga']],
+  // --- Core ---
+  [/ghd sit|sit[- ]?up|v[- ]?up|crunch|abmat/i, ['core_flexion']],
+  [/l[- ]?sit/i, ['core_flexion']],
+  // --- Agarre y muneca ---
+  [/dead ?hang|colgarse/i, ['colgado', 'grip']],
+  [/wrist|muneca/i, ['muneca_ext']],
+];
+
+function autoPatterns(text: string): string[] {
+  const out: string[] = [];
+  for (const [re, pats] of AUTO_TAGS) {
+    if (re.test(text)) {
+      for (const p of pats) if (!out.includes(p)) out.push(p);
+      break;
+    }
+  }
+  return out;
+}
+
+const canon = (c: Record<string, string>) => JSON.stringify(Object.fromEntries(Object.entries(c ?? {}).sort()));
+
 function linesToText(b: any): string {
   return (b.lines ?? []).map((l: any) => {
     const c = l.content ?? {};
@@ -29,20 +110,18 @@ function linesToText(b: any): string {
     if (c['*']) parts.push(c['*']);
     for (const k of LEVEL_KEYS) if (c[k]) parts.push(k + ': ' + c[k]);
     for (const k of Object.keys(c)) if (k !== '*' && !LEVEL_KEYS.includes(k)) parts.push(k + ': ' + c[k]);
-    let out = parts.join(' | ');
-    if (l.patterns && l.patterns.length) out += ' :: ' + l.patterns.join(', ');
-    return out;
+    return parts.join(' | ');
   }).join('\n');
 }
 
-function textToLines(v: string): any[] {
+function textToLines(v: string, prev?: any[]): any[] {
   return v.split('\n').map((raw) => raw.trim()).filter((raw) => raw.length > 0).map((raw, i) => {
     let main = raw;
-    let patterns: string[] = [];
+    let manual: string[] | null = null;
     const di = raw.lastIndexOf('::');
     if (di !== -1) {
       main = raw.slice(0, di).trim();
-      patterns = raw.slice(di + 2).split(',').map((p) => p.trim()).filter((p) => p);
+      manual = raw.slice(di + 2).split(',').map((p) => p.trim()).filter((p) => p);
     }
     const content: Record<string, string> = {};
     for (const seg of main.split('|').map((x) => x.trim()).filter((x) => x)) {
@@ -51,6 +130,18 @@ function textToLines(v: string): any[] {
         content[m[1] === 'TODOS' ? '*' : m[1]] = m[2].trim();
       } else {
         content['*'] = content['*'] ? content['*'] + ' ' + seg : seg;
+      }
+    }
+    let patterns: string[];
+    if (manual) {
+      patterns = manual;
+    } else {
+      const kept = (prev ?? []).find((p) => canon(p.content) === canon(content));
+      if (kept && kept.patterns && kept.patterns.length) {
+        patterns = kept.patterns;
+      } else {
+        const allText = Object.values(content).join(' ');
+        patterns = autoPatterns(allText);
       }
     }
     return { id: 'l' + (i + 1), content, patterns };
@@ -325,11 +416,20 @@ export function CoachPanel() {
                           <input className="loginput" value={b.scheme ?? ''}
                             onChange={(e) => mut((c) => { c[di].blocks[bi].scheme = e.target.value; })} />
                         </label>
-                        <label className="editlabel">Lineas: una por renglon. Niveles con | (RX: 5x5 @ 70% | ELITE: 5x5 @ 75%). Adaptable con :: patron
+                        <label className="editlabel">Lineas: una por renglon. Niveles con | (ej: RX: 5x5 @ 70% | ELITE: 5x5 @ 75%). Las adaptaciones por molestia se detectan solas
                           <textarea className="loginput" rows={Math.max(3, (b.lines ?? []).length + 1)}
                             defaultValue={linesToText(b)}
-                            onBlur={(e) => mut((c) => { c[di].blocks[bi].lines = textToLines(e.target.value); })} />
+                            onBlur={(e) => mut((c) => { c[di].blocks[bi].lines = textToLines(e.target.value, c[di].blocks[bi].lines); })} />
                         </label>
+                        {(b.lines ?? []).some((l: any) => l.patterns && l.patterns.length > 0) && (
+                          <p className="note" style={{ marginTop: 4 }}>
+                            Se adaptara por molestias:{' '}
+                            {(b.lines ?? [])
+                              .map((l: any, i: number) => (l.patterns && l.patterns.length ? 'linea ' + (i + 1) : null))
+                              .filter(Boolean)
+                              .join(', ')}
+                          </p>
+                        )}
                         <label className="editlabel">Nota del bloque
                           <input className="loginput" value={b.note ?? ''}
                             onChange={(e) => mut((c) => { c[di].blocks[bi].note = e.target.value; })} />

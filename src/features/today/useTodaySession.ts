@@ -9,7 +9,21 @@ export type DayStatus = 'done' | 'partial';
 
 export function useTodaySession(track: Track, level: string, dow: number | null) {
   const sb = supabase;
-  const day: Day | null = dow ? WEEKS[track].find((d) => d.dow === dow) ?? null : null;
+  const [week, setWeek] = useState<Day[]>(WEEKS[track]);
+
+  useEffect(() => {
+    setWeek(WEEKS[track]);
+    if (!sb) return;
+    sb.from('published_weeks')
+      .select('data')
+      .eq('track', track)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data && data.data) setWeek(data.data as Day[]);
+      });
+  }, [track]);
+
+  const day: Day | null = dow ? week.find((d) => d.dow === dow) ?? null : null;
 
   const [userId, setUserId] = useState<string | null>(null);
   const [duration, setDuration] = useState<Duration | null>(null);
@@ -92,7 +106,7 @@ export function useTodaySession(track: Track, level: string, dow: number | null)
   const finishDay = () => { if (dow) setStatus(dow, 'done'); };
 
   return {
-    week: WEEKS[track],
+    week,
     day,
     cycle: CYCLES[track],
     levels: LEVELS[track],

@@ -38,6 +38,31 @@ export function CoachPanel() {
   const [logs, setLogs] = useState<LogRow[] | null>(null);
   const [statuses, setStatuses] = useState<StatusRow[]>([]);
   const [checkins, setCheckins] = useState<CheckinRow[]>([]);
+  const [pub, setPub] = useState<Record<string, string>>({});
+  const [pubBusy, setPubBusy] = useState<string | null>(null);
+  const [pubMsg, setPubMsg] = useState('');
+
+  const loadPub = () => {
+    sb.from('published_weeks').select('track, updated_at').then(({ data }) => {
+      const map: Record<string, string> = {};
+      for (const r of (data ?? []) as { track: string; updated_at: string }[]) map[r.track] = r.updated_at;
+      setPub(map);
+    });
+  };
+  useEffect(loadPub, []);
+
+  const publish = async (tk: 'CF' | 'HX') => {
+    setPubBusy(tk);
+    setPubMsg('');
+    const { error: err } = await sb.from('published_weeks').upsert({
+      track: tk,
+      data: WEEKS[tk],
+      updated_at: new Date().toISOString(),
+    });
+    setPubBusy(null);
+    if (err) setPubMsg('Error al publicar: ' + err.message);
+    else { setPubMsg('Semana de ' + (tk === 'CF' ? 'CrossFit' : 'HYROX') + ' publicada.'); loadPub(); }
+  };
 
   useEffect(() => {
     sb.from('profiles')
@@ -144,6 +169,24 @@ export function CoachPanel() {
         {athletes.length} {athletes.length === 1 ? 'perfil registrado' : 'perfiles registrados'}.
         Toca un atleta para ver su actividad.
       </p>
+
+      <p className="eyebrow" style={{ marginTop: 18 }}>Programacion</p>
+      {(['CF', 'HX'] as const).map((tk) => (
+        <div key={tk} className="option" style={{ cursor: 'default' }}>
+          <strong>{tk === 'CF' ? 'CrossFit' : 'HYROX'}</strong>
+          <span>
+            {pub[tk]
+              ? 'Publicada el ' + new Date(pub[tk]).toLocaleDateString('es-ES') + ' a las ' + new Date(pub[tk]).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+              : 'Sin publicar - los atletas ven la semana del codigo'}
+          </span>
+          <button className="chip" style={{ marginTop: 8 }} disabled={pubBusy === tk} onClick={() => publish(tk)}>
+            {pubBusy === tk ? 'Publicando...' : 'Publicar semana actual'}
+          </button>
+        </div>
+      ))}
+      {pubMsg && <p className="forminfo">{pubMsg}</p>}
+
+      <p className="eyebrow" style={{ marginTop: 22 }}>Atletas</p>
       {athletes.map((a) => (
         <button key={a.id} className="option" onClick={() => setSelected(a)}>
           <strong>

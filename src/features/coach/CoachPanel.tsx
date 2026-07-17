@@ -89,7 +89,11 @@ export function CoachPanel() {
     setValErr('');
     setPubMsg('');
     sb.from('published_weeks').select('data').eq('track', tk).maybeSingle()
-      .then(({ data }) => setJsonText(JSON.stringify((data && data.data) ? data.data : WEEKS[tk], null, 2)));
+      .then(({ data }) => {
+        const days = (data && data.data) ? data.data : WEEKS[tk];
+        setJsonText(JSON.stringify(days, null, 2));
+        setPreview(days as any[]);
+      });
   };
 
   const runValidate = () => {
@@ -182,7 +186,7 @@ export function CoachPanel() {
 
         <div style={{ display: 'flex', gap: 8, margin: '10px 0' }}>
           <button className="chip" onClick={() => openEditor(tk)}>Recargar publicada</button>
-          <button className="chip" onClick={() => { setJsonText(JSON.stringify(WEEKS[tk], null, 2)); setPreview(null); setValErr(''); }}>
+          <button className="chip" onClick={() => { setJsonText(JSON.stringify(WEEKS[tk], null, 2)); setPreview(WEEKS[tk] as any[]); setValErr(''); }}>
             Cargar la del codigo
           </button>
         </div>
@@ -201,7 +205,7 @@ export function CoachPanel() {
 
         {preview && (
           <>
-            <p className="eyebrow" style={{ marginTop: 18 }}>Vista previa - {preview.length} dias</p>
+            <p className="eyebrow" style={{ marginTop: 18 }}>Vista previa - {preview.length} dias - asi lo vera el atleta</p>
             {preview.map((d: any) => (
               <div key={d.dow} className="option" style={{ cursor: 'default' }}>
                 <strong>{DAY_FULL[d.dow]} - {d.focus}</strong>

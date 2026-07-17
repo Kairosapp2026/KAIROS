@@ -333,6 +333,13 @@ export function AuthApp() {
         ? <CoachPanel />
         : <TodaySession key={track} track={track} level={profile.level}
             levels={LEVELS[track]} onLevelChange={setLevel} />}
+      {!isCoach && (
+        <p className="note" style={{ textAlign: 'center', padding: '18px 0 26px' }}>
+          <a href={PORTAL_URL} target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>
+            Gestionar mi suscripcion
+          </a>
+        </p>
+      )}
     </div>
   );
 }

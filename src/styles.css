@@ -231,3 +231,22 @@ h3 { font-size: 14px; color: var(--accent); margin: 10px 0 4px; }
 .coachday { flex: 1; text-align: center; padding: 12px 0; border-radius: 10px; border: 1px solid var(--border); background: var(--panel); font-weight: 800; color: var(--muted); }
 .coachday.ok { border-color: var(--accent); color: var(--accent); background: rgba(45, 212, 167, .1); }
 .coachday.part { border-color: var(--warn); color: var(--warn); background: rgba(240, 185, 90, .08); }
+
+/* ===== Landing v3: metodo, FAQ y slides nuevos ===== */
+.phwhy { font-size: 12px; color: #c4cddc; line-height: 1.55; margin-top: 4px; }
+.phcycle { margin: 6px 0 12px; }
+.phbar { height: 8px; border-radius: 999px; background: #1b2740; overflow: hidden; }
+.phbar span { display: block; height: 100%; background: var(--grad); border-radius: 999px; }
+.phbarlabel { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+.metodogrid { display: flex; flex-direction: column; gap: 10px; }
+.metodoitem { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.metodoitem strong { display: block; margin-bottom: 4px; font-size: 15.5px; }
+.metodoitem p { color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+
+.faqitem { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; padding: 0 16px; }
+.faqitem summary { cursor: pointer; font-weight: 700; font-size: 14.5px; padding: 14px 0; list-style: none; position: relative; padding-right: 26px; }
+.faqitem summary::-webkit-details-marker { display: none; }
+.faqitem summary::after { content: '+'; position: absolute; right: 2px; top: 50%; transform: translateY(-50%); color: var(--accent); font-size: 20px; font-weight: 400; }
+.faqitem[open] summary::after { content: '-'; }
+.faqitem p { color: var(--muted); font-size: 13.5px; line-height: 1.6; padding-bottom: 14px; }

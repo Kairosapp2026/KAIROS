@@ -372,3 +372,17 @@ h3 { font-size: 14px; color: var(--accent); margin: 10px 0 4px; }
 .progmeta { display: block; font-style: normal; font-size: 11px; letter-spacing: .08em; font-weight: 800; color: var(--accent); margin-bottom: 4px; }
 .progblock ul { margin: 0; padding-left: 18px; }
 .progblock li { font-size: 13px; color: #dbe3f0; padding: 1px 0; }
+
+.editday { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+.editdayhead { width: 100%; display: flex; align-items: center; gap: 10px; background: none; border: none; color: inherit; padding: 13px 14px; cursor: pointer; text-align: left; font-family: inherit; }
+.editdayhead strong { font-size: 14.5px; min-width: 86px; }
+.editdayhead span { flex: 1; color: var(--muted); font-size: 13px; }
+.editdayhead em { font-style: normal; color: var(--accent); font-size: 12px; font-weight: 700; }
+.editdaybody { padding: 4px 14px 14px; border-top: 1px solid var(--border); }
+.editlabel { display: block; font-size: 11.5px; letter-spacing: .06em; color: var(--muted); font-weight: 700; margin-top: 10px; }
+.editlabel .loginput { margin-top: 4px; width: 100%; font-size: 14px; }
+.editrow { display: flex; gap: 10px; }
+.editrow .half { flex: 1; }
+.editblock { border: 1px dashed var(--border); border-radius: 10px; padding: 4px 12px 12px; margin-top: 14px; }
+.chip.danger { border-color: #a04545; color: #e08a8a; }
+select.loginput { appearance: none; }

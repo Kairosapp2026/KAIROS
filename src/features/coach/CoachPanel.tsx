@@ -19,6 +19,22 @@ const DAY_LETTER = ['', 'L', 'M', 'X', 'J', 'V', 'S'];
 const DAY_FULL = ['', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 const VALID_TAGS = ['NUCLEO', 'COMPLEMENTARIO', 'EXTRA'];
 
+function linesToText(b: any): string {
+  return (b.lines ?? []).map((l: any) =>
+    l.text + (l.patterns && l.patterns.length ? ' :: ' + l.patterns.join(', ') : '')
+  ).join('\n');
+}
+
+function textToLines(v: string): any[] {
+  return v.split('\n').map((raw) => raw.trim()).filter((raw) => raw.length > 0).map((raw) => {
+    const idx = raw.indexOf('::');
+    if (idx === -1) return { text: raw };
+    const text = raw.slice(0, idx).trim();
+    const patterns = raw.slice(idx + 2).split(',').map((p) => p.trim()).filter((p) => p);
+    return patterns.length ? { text, patterns } : { text: raw };
+  });
+}
+
 function validateWeek(text: string): { days?: any[]; error?: string } {
   let parsed: any;
   try { parsed = JSON.parse(text); } catch { return { error: 'El texto no es JSON valido. Asegurate de pegar el bloque completo, de [ a ].' }; }
@@ -79,36 +95,54 @@ export function CoachPanel() {
   useEffect(loadPub, []);
 
   const [progTrack, setProgTrack] = useState<'CF' | 'HX' | null>(null);
+  const [days, setDays] = useState<any[] | null>(null);
+  const [editMode, setEditMode] = useState<'visual' | 'json'>('visual');
   const [jsonText, setJsonText] = useState('');
-  const [preview, setPreview] = useState<any[] | null>(null);
+  const [openDay, setOpenDay] = useState<number | null>(null);
   const [valErr, setValErr] = useState('');
+
+  const mut = (fn: (c: any[]) => void) =>
+    setDays((prev) => {
+      const c = JSON.parse(JSON.stringify(prev ?? []));
+      fn(c);
+      return c;
+    });
 
   const openEditor = (tk: 'CF' | 'HX') => {
     setProgTrack(tk);
-    setPreview(null);
     setValErr('');
     setPubMsg('');
+    setEditMode('visual');
+    setOpenDay(null);
     sb.from('published_weeks').select('data').eq('track', tk).maybeSingle()
       .then(({ data }) => {
-        const days = (data && data.data) ? data.data : WEEKS[tk];
-        setJsonText(JSON.stringify(days, null, 2));
-        setPreview(days as any[]);
+        const d = (data && data.data) ? data.data : WEEKS[tk];
+        setDays(JSON.parse(JSON.stringify(d)));
       });
   };
 
-  const runValidate = () => {
+  const toJsonMode = () => { setJsonText(JSON.stringify(days ?? [], null, 2)); setEditMode('json'); setValErr(''); };
+
+  const importJson = () => {
     setPubMsg('');
     const res = validateWeek(jsonText);
-    if (res.error) { setValErr(res.error); setPreview(null); }
-    else { setValErr(''); setPreview(res.days ?? null); }
+    if (res.error) { setValErr(res.error); return; }
+    setValErr('');
+    setDays(res.days ?? []);
+    setEditMode('visual');
+    setPubMsg('Semana importada. Revisala y publica cuando este lista.');
   };
 
-  const publishPreview = async () => {
-    if (!progTrack || !preview) return;
+  const publishDays = async () => {
+    if (!progTrack || !days) return;
+    setPubMsg('');
+    const res = validateWeek(JSON.stringify(days));
+    if (res.error) { setValErr(res.error); return; }
+    setValErr('');
     setPubBusy(progTrack);
     const { error: err } = await sb.from('published_weeks').upsert({
       track: progTrack,
-      data: preview,
+      data: res.days,
       updated_at: new Date().toISOString(),
     });
     setPubBusy(null);
@@ -169,7 +203,7 @@ export function CoachPanel() {
     const tk = progTrack;
     return (
       <main className="screen">
-        <button className="link" onClick={() => { setProgTrack(null); setPreview(null); setValErr(''); setPubMsg(''); }}>
+        <button className="link" onClick={() => { setProgTrack(null); setDays(null); setValErr(''); setPubMsg(''); }}>
           Volver al panel
         </button>
         <h1 style={{ marginTop: 8 }}>Programacion {tk === 'CF' ? 'CrossFit' : 'HYROX'}</h1>
@@ -179,53 +213,137 @@ export function CoachPanel() {
             : 'Sin publicar: tus atletas ven la semana del codigo.'}
         </p>
 
-        <p className="note" style={{ marginTop: 10 }}>
-          1. Copia el contenido de abajo y pideselo modificado a tu IA (mismo formato exacto).
-          2. Pega aqui el resultado completo. 3. Valida, revisa la vista previa y publica.
-        </p>
-
-        <div style={{ display: 'flex', gap: 8, margin: '10px 0' }}>
-          <button className="chip" onClick={() => openEditor(tk)}>Recargar publicada</button>
-          <button className="chip" onClick={() => { setJsonText(JSON.stringify(WEEKS[tk], null, 2)); setPreview(WEEKS[tk] as any[]); setValErr(''); }}>
-            Cargar la del codigo
+        <div style={{ display: 'flex', gap: 8, margin: '12px 0' }}>
+          <button className={'chip ' + (editMode === 'visual' ? 'on' : '')} onClick={() => setEditMode('visual')}>Editar</button>
+          <button className={'chip ' + (editMode === 'json' ? 'on' : '')} onClick={toJsonMode}>Codigo IA</button>
+          <button className="chip" onClick={() => { setDays(JSON.parse(JSON.stringify(WEEKS[tk]))); setValErr(''); setPubMsg('Semana del codigo cargada.'); }}>
+            Restaurar del codigo
           </button>
         </div>
 
-        <textarea
-          className="loginput progjson"
-          rows={12}
-          value={jsonText}
-          onChange={(e) => { setJsonText(e.target.value); setPreview(null); }}
-          spellCheck={false}
-        />
-
-        <button className="cta" style={{ marginTop: 10 }} onClick={runValidate}>Validar y previsualizar</button>
-        {valErr && <p className="formerror">{valErr}</p>}
-        {pubMsg && <p className="forminfo">{pubMsg}</p>}
-
-        {preview && (
+        {editMode === 'json' && (
           <>
-            <p className="eyebrow" style={{ marginTop: 18 }}>Vista previa - {preview.length} dias - asi lo vera el atleta</p>
-            {preview.map((d: any) => (
-              <div key={d.dow} className="option" style={{ cursor: 'default' }}>
-                <strong>{DAY_FULL[d.dow]} - {d.focus}</strong>
-                {d.why && <span>{d.why}</span>}
-                {d.blocks.map((b: any) => (
-                  <div key={b.id} className="progblock">
-                    <em className="progmeta">{String(b.format).split('_').join(' ')} - {b.tag}{b.name ? ' - ' + b.name : ''}{b.scheme ? ' - ' + b.scheme : ''}</em>
-                    <ul>
-                      {b.lines.map((l: any, i: number) => (
-                        <li key={i}>{l.text}{l.patterns && l.patterns.length ? ' *' : ''}</li>
-                      ))}
-                    </ul>
+            <p className="note">
+              Copia este bloque, pideselo modificado a tu IA (mismo formato exacto) y pega aqui el resultado completo.
+            </p>
+            <textarea className="loginput progjson" rows={12} value={jsonText}
+              onChange={(e) => setJsonText(e.target.value)} spellCheck={false} />
+            <button className="cta" style={{ marginTop: 10 }} onClick={importJson}>Importar al editor</button>
+            {valErr && <p className="formerror">{valErr}</p>}
+            {pubMsg && <p className="forminfo">{pubMsg}</p>}
+          </>
+        )}
+
+        {editMode === 'visual' && !days && <p className="muted">Cargando semana...</p>}
+
+        {editMode === 'visual' && days && (
+          <>
+            {days.map((d: any, di: number) => (
+              <div key={d.dow} className="editday">
+                <button className="editdayhead" onClick={() => setOpenDay(openDay === d.dow ? null : d.dow)}>
+                  <strong>{DAY_FULL[d.dow]}</strong>
+                  <span>{d.focus}</span>
+                  <em>{openDay === d.dow ? 'cerrar' : 'editar'}</em>
+                </button>
+
+                {openDay === d.dow && (
+                  <div className="editdaybody">
+                    <label className="editlabel">Foco del dia
+                      <input className="loginput" value={d.focus}
+                        onChange={(e) => mut((c) => { c[di].focus = e.target.value; })} />
+                    </label>
+                    <label className="editlabel">Por que hoy esto (lo lee el atleta)
+                      <textarea className="loginput" rows={2} value={d.why ?? ''}
+                        onChange={(e) => mut((c) => { c[di].why = e.target.value; })} />
+                    </label>
+
+                    {d.blocks.map((b: any, bi: number) => (
+                      <div key={b.id ?? bi} className="editblock">
+                        <div className="editrow">
+                          <label className="editlabel half">Etiqueta
+                            <select className="loginput" value={b.tag}
+                              onChange={(e) => mut((c) => { c[di].blocks[bi].tag = e.target.value; })}>
+                              <option value="NUCLEO">NUCLEO</option>
+                              <option value="COMPLEMENTARIO">COMPLEMENTARIO</option>
+                              <option value="EXTRA">EXTRA</option>
+                            </select>
+                          </label>
+                          <label className="editlabel half">Registro de marca
+                            <select className="loginput" value={b.logType ?? ''}
+                              onChange={(e) => mut((c) => { c[di].blocks[bi].logType = e.target.value || null; })}>
+                              <option value="">Sin registro</option>
+                              <option value="peso">Peso</option>
+                              <option value="tiempo">Tiempo</option>
+                              <option value="rondas">Rondas</option>
+                            </select>
+                          </label>
+                        </div>
+                        <div className="editrow">
+                          <label className="editlabel half">Formato
+                            <input className="loginput" value={b.format}
+                              onChange={(e) => mut((c) => { c[di].blocks[bi].format = e.target.value; })} />
+                          </label>
+                          <label className="editlabel half">Nombre
+                            <input className="loginput" value={b.name ?? ''}
+                              onChange={(e) => mut((c) => { c[di].blocks[bi].name = e.target.value; })} />
+                          </label>
+                        </div>
+                        <label className="editlabel">Esquema (series, tiempo...)
+                          <input className="loginput" value={b.scheme ?? ''}
+                            onChange={(e) => mut((c) => { c[di].blocks[bi].scheme = e.target.value; })} />
+                        </label>
+                        <label className="editlabel">Lineas (una por renglon; adaptable: texto :: patron)
+                          <textarea className="loginput" rows={Math.max(3, (b.lines ?? []).length + 1)}
+                            defaultValue={linesToText(b)}
+                            onBlur={(e) => mut((c) => { c[di].blocks[bi].lines = textToLines(e.target.value); })} />
+                        </label>
+                        <label className="editlabel">Nota del bloque
+                          <input className="loginput" value={b.note ?? ''}
+                            onChange={(e) => mut((c) => { c[di].blocks[bi].note = e.target.value; })} />
+                        </label>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                          {bi > 0 && (
+                            <button className="chip" onClick={() => mut((c) => {
+                              const arr = c[di].blocks;
+                              [arr[bi - 1], arr[bi]] = [arr[bi], arr[bi - 1]];
+                            })}>Subir</button>
+                          )}
+                          {bi < d.blocks.length - 1 && (
+                            <button className="chip" onClick={() => mut((c) => {
+                              const arr = c[di].blocks;
+                              [arr[bi], arr[bi + 1]] = [arr[bi + 1], arr[bi]];
+                            })}>Bajar</button>
+                          )}
+                          <button className="chip danger" onClick={() => {
+                            if (confirm('Eliminar este bloque?')) mut((c) => { c[di].blocks.splice(bi, 1); });
+                          }}>Eliminar bloque</button>
+                        </div>
+                      </div>
+                    ))}
+
+                    <button className="chip" style={{ marginTop: 10 }} onClick={() => mut((c) => {
+                      c[di].blocks.push({
+                        id: 'nb-' + Date.now(),
+                        tag: 'COMPLEMENTARIO',
+                        format: 'TRABAJO',
+                        name: '',
+                        scheme: '',
+                        note: '',
+                        logType: null,
+                        lines: [{ text: 'Nueva linea' }],
+                      });
+                    })}>+ Anadir bloque</button>
                   </div>
-                ))}
+                )}
               </div>
             ))}
-            <p className="note">Las lineas con * tienen patrones de adaptacion por molestias.</p>
-            <button className="cta" disabled={pubBusy === tk} onClick={publishPreview}>
+
+            {valErr && <p className="formerror">{valErr}</p>}
+            {pubMsg && <p className="forminfo">{pubMsg}</p>}
+            <button className="cta" style={{ marginTop: 14 }} disabled={pubBusy === tk} onClick={publishDays}>
               {pubBusy === tk ? 'Publicando...' : 'Publicar esta semana'}
             </button>
+            <p className="note center">Los cambios no afectan a nadie hasta que pulses Publicar.</p>
           </>
         )}
       </main>

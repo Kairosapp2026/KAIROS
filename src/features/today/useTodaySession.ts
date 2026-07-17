@@ -14,9 +14,13 @@ export function useTodaySession(track: Track, level: string, dow: number | null)
   useEffect(() => {
     setWeek(WEEKS[track]);
     if (!sb) return;
+    const iso = new Date().toISOString().slice(0, 10);
     sb.from('published_weeks')
       .select('data')
       .eq('track', track)
+      .lte('week_start', iso)
+      .order('week_start', { ascending: false })
+      .limit(1)
       .maybeSingle()
       .then(({ data }) => {
         if (data && data.data) setWeek(data.data as Day[]);

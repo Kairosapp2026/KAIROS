@@ -16,6 +16,27 @@ interface StatusRow { track: string; dow: number; status: string }
 interface CheckinRow { track: string; dow: number; duration: string; pains: { zone: string; type: string }[]; created_at: string }
 
 const DAY_LETTER = ['', 'L', 'M', 'X', 'J', 'V', 'S'];
+
+function mondayOf(d: Date): Date {
+  const x = new Date(d);
+  const day = x.getDay();
+  x.setDate(x.getDate() + (day === 0 ? -6 : 1 - day));
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+const isoDate = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + dd;
+};
+const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const weekLabel = (iso: string) => {
+  const d = new Date(iso + 'T00:00:00');
+  const end = addDays(d, 5);
+  const f = (x: Date) => x.getDate() + ' ' + x.toLocaleDateString('es-ES', { month: 'short' });
+  return f(d) + ' - ' + f(end);
+};
 const DAY_FULL = ['', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 const VALID_TAGS = ['NUCLEO', 'COMPLEMENTARIO', 'EXTRA'];
 
@@ -207,15 +228,18 @@ export function CoachPanel() {
   const [pubMsg, setPubMsg] = useState('');
 
   const loadPub = () => {
-    sb.from('published_weeks').select('track, updated_at').then(({ data }) => {
+    sb.from('published_weeks').select('track, week_start, updated_at').then(({ data }) => {
       const map: Record<string, string> = {};
-      for (const r of (data ?? []) as { track: string; updated_at: string }[]) map[r.track] = r.updated_at;
+      for (const r of (data ?? []) as { track: string; week_start: string; updated_at: string }[]) {
+        map[r.track + '|' + r.week_start] = r.updated_at;
+      }
       setPub(map);
     });
   };
   useEffect(loadPub, []);
 
   const [progTrack, setProgTrack] = useState<'CF' | 'HX' | null>(null);
+  const [progWeek, setProgWeek] = useState<string | null>(null);
   const [days, setDays] = useState<any[] | null>(null);
   const [editMode, setEditMode] = useState<'visual' | 'json'>('visual');
   const [jsonText, setJsonText] = useState('');
@@ -231,14 +255,30 @@ export function CoachPanel() {
 
   const openEditor = (tk: 'CF' | 'HX') => {
     setProgTrack(tk);
+    setProgWeek(null);
+    setValErr('');
+    setPubMsg('');
+  };
+
+  const openWeek = (tk: 'CF' | 'HX', ws: string) => {
+    setProgWeek(ws);
     setValErr('');
     setPubMsg('');
     setEditMode('visual');
     setOpenDay(null);
-    sb.from('published_weeks').select('data').eq('track', tk).maybeSingle()
-      .then(({ data }) => {
-        const d = (data && data.data) ? data.data : WEEKS[tk];
-        setDays(JSON.parse(JSON.stringify(d)));
+    setDays(null);
+    sb.from('published_weeks').select('data').eq('track', tk).eq('week_start', ws).maybeSingle()
+      .then(async ({ data }) => {
+        if (data && data.data) { setDays(JSON.parse(JSON.stringify(data.data))); return; }
+        const prev = isoDate(addDays(new Date(ws + 'T00:00:00'), -7));
+        const { data: prevRow } = await sb.from('published_weeks').select('data').eq('track', tk).eq('week_start', prev).maybeSingle();
+        if (prevRow && prevRow.data) {
+          setDays(JSON.parse(JSON.stringify(prevRow.data)));
+          setPubMsg('Semana nueva: cargada como copia de la anterior. Editala y publica.');
+        } else {
+          setDays(JSON.parse(JSON.stringify(WEEKS[tk])));
+          setPubMsg('Semana nueva: cargada la plantilla base. Editala y publica.');
+        }
       });
   };
 
@@ -263,9 +303,10 @@ export function CoachPanel() {
     setPubBusy(progTrack);
     const { error: err } = await sb.from('published_weeks').upsert({
       track: progTrack,
+      week_start: progWeek,
       data: res.days,
       updated_at: new Date().toISOString(),
-    });
+    }, { onConflict: 'track,week_start' });
     setPubBusy(null);
     if (err) setPubMsg('Error al publicar: ' + err.message);
     else { setPubMsg('Semana publicada. Tus atletas ya la ven.'); loadPub(); }
@@ -276,9 +317,10 @@ export function CoachPanel() {
     setPubMsg('');
     const { error: err } = await sb.from('published_weeks').upsert({
       track: tk,
+      week_start: isoDate(mondayOf(new Date())),
       data: WEEKS[tk],
       updated_at: new Date().toISOString(),
-    });
+    }, { onConflict: 'track,week_start' });
     setPubBusy(null);
     if (err) setPubMsg('Error al publicar: ' + err.message);
     else { setPubMsg('Semana de ' + (tk === 'CF' ? 'CrossFit' : 'HYROX') + ' publicada.'); loadPub(); }
@@ -319,19 +361,45 @@ export function CoachPanel() {
   if (!athletes)
     return <main className="screen"><p className="muted">Cargando atletas...</p></main>;
 
+  /* ---------- Planificador: 8 semanas vista ---------- */
+  if (progTrack && !progWeek) {
+    const tk = progTrack;
+    const thisMonday = mondayOf(new Date());
+    const weeks = Array.from({ length: 8 }, (_, i) => isoDate(addDays(thisMonday, i * 7)));
+    return (
+      <main className="screen">
+        <button className="link" onClick={() => setProgTrack(null)}>Volver al panel</button>
+        <h1 style={{ marginTop: 8 }}>Planificador {tk === 'CF' ? 'CrossFit' : 'HYROX'}</h1>
+        <p className="muted">Las proximas 8 semanas. Toca una para editarla y publicarla.</p>
+        {weeks.map((ws, i) => {
+          const done = !!pub[tk + '|' + ws];
+          return (
+            <button key={ws} className={`option ${done ? 'dayok' : ''}`} onClick={() => openWeek(tk, ws)}>
+              <strong>
+                {i === 0 ? 'Esta semana' : i === 1 ? 'Proxima semana' : 'Semana ' + (i + 1)}
+                {done && <em className="badge ok" style={{ marginLeft: 8 }}>PUBLICADA</em>}
+              </strong>
+              <span>{weekLabel(ws)}{done ? ' - editada el ' + new Date(pub[tk + '|' + ws]).toLocaleDateString('es-ES') : ' - sin programar'}</span>
+            </button>
+          );
+        })}
+      </main>
+    );
+  }
+
   /* ---------- Editor de programacion ---------- */
-  if (progTrack) {
+  if (progTrack && progWeek) {
     const tk = progTrack;
     return (
       <main className="screen">
-        <button className="link" onClick={() => { setProgTrack(null); setDays(null); setValErr(''); setPubMsg(''); }}>
-          Volver al panel
+        <button className="link" onClick={() => { setProgWeek(null); setDays(null); setValErr(''); setPubMsg(''); }}>
+          Volver al planificador
         </button>
-        <h1 style={{ marginTop: 8 }}>Programacion {tk === 'CF' ? 'CrossFit' : 'HYROX'}</h1>
+        <h1 style={{ marginTop: 8 }}>{tk === 'CF' ? 'CrossFit' : 'HYROX'} - {weekLabel(progWeek)}</h1>
         <p className="muted">
-          {pub[tk]
-            ? 'Ultima publicacion: ' + new Date(pub[tk]).toLocaleDateString('es-ES') + ' a las ' + new Date(pub[tk]).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-            : 'Sin publicar: tus atletas ven la semana del codigo.'}
+          {pub[tk + '|' + progWeek]
+            ? 'Publicada - ultima edicion el ' + new Date(pub[tk + '|' + progWeek]).toLocaleDateString('es-ES')
+            : 'Sin publicar todavia.'}
         </p>
 
         <div style={{ display: 'flex', gap: 8, margin: '12px 0' }}>
@@ -559,15 +627,14 @@ export function CoachPanel() {
         <div key={tk} className="option" style={{ cursor: 'default' }}>
           <strong>{tk === 'CF' ? 'CrossFit' : 'HYROX'}</strong>
           <span>
-            {pub[tk]
-              ? 'Publicada el ' + new Date(pub[tk]).toLocaleDateString('es-ES') + ' a las ' + new Date(pub[tk]).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-              : 'Sin publicar - los atletas ven la semana del codigo'}
+            {(() => {
+              const thisMonday = mondayOf(new Date());
+              const n = Array.from({ length: 8 }, (_, i) => isoDate(addDays(thisMonday, i * 7))).filter((ws) => pub[tk + '|' + ws]).length;
+              return n === 0 ? 'Ninguna de las proximas 8 semanas programada' : n + ' de las proximas 8 semanas programadas';
+            })()}
           </span>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button className="chip" onClick={() => openEditor(tk)}>Editar y publicar</button>
-            <button className="chip" disabled={pubBusy === tk} onClick={() => publish(tk)}>
-              {pubBusy === tk ? 'Publicando...' : 'Publicar la del codigo'}
-            </button>
+            <button className="chip" onClick={() => openEditor(tk)}>Abrir planificador</button>
           </div>
         </div>
       ))}

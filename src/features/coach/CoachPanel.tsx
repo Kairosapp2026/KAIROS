@@ -19,19 +19,41 @@ const DAY_LETTER = ['', 'L', 'M', 'X', 'J', 'V', 'S'];
 const DAY_FULL = ['', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 const VALID_TAGS = ['NUCLEO', 'COMPLEMENTARIO', 'EXTRA'];
 
+const FORMATS = ['FUERZA', 'HALTEROFILIA', 'SKILL', 'AMRAP', 'EMOM', 'FOR_TIME', 'INTERVALOS', 'ACCESORIO', 'TEAM', 'RECUPERACION'];
+const LEVEL_KEYS = ['ESCALADO', 'INTERMEDIO', 'RX', 'ELITE', 'OPEN', 'PRO'];
+
 function linesToText(b: any): string {
-  return (b.lines ?? []).map((l: any) =>
-    l.text + (l.patterns && l.patterns.length ? ' :: ' + l.patterns.join(', ') : '')
-  ).join('\n');
+  return (b.lines ?? []).map((l: any) => {
+    const c = l.content ?? {};
+    const parts: string[] = [];
+    if (c['*']) parts.push(c['*']);
+    for (const k of LEVEL_KEYS) if (c[k]) parts.push(k + ': ' + c[k]);
+    for (const k of Object.keys(c)) if (k !== '*' && !LEVEL_KEYS.includes(k)) parts.push(k + ': ' + c[k]);
+    let out = parts.join(' | ');
+    if (l.patterns && l.patterns.length) out += ' :: ' + l.patterns.join(', ');
+    return out;
+  }).join('\n');
 }
 
 function textToLines(v: string): any[] {
-  return v.split('\n').map((raw) => raw.trim()).filter((raw) => raw.length > 0).map((raw) => {
-    const idx = raw.indexOf('::');
-    if (idx === -1) return { text: raw };
-    const text = raw.slice(0, idx).trim();
-    const patterns = raw.slice(idx + 2).split(',').map((p) => p.trim()).filter((p) => p);
-    return patterns.length ? { text, patterns } : { text: raw };
+  return v.split('\n').map((raw) => raw.trim()).filter((raw) => raw.length > 0).map((raw, i) => {
+    let main = raw;
+    let patterns: string[] = [];
+    const di = raw.lastIndexOf('::');
+    if (di !== -1) {
+      main = raw.slice(0, di).trim();
+      patterns = raw.slice(di + 2).split(',').map((p) => p.trim()).filter((p) => p);
+    }
+    const content: Record<string, string> = {};
+    for (const seg of main.split('|').map((x) => x.trim()).filter((x) => x)) {
+      const m = seg.match(/^([A-Z_]+)\s*:\s*(.+)$/);
+      if (m && (LEVEL_KEYS.includes(m[1]) || m[1] === 'TODOS')) {
+        content[m[1] === 'TODOS' ? '*' : m[1]] = m[2].trim();
+      } else {
+        content['*'] = content['*'] ? content['*'] + ' ' + seg : seg;
+      }
+    }
+    return { id: 'l' + (i + 1), content, patterns };
   });
 }
 
@@ -53,7 +75,15 @@ function validateWeek(text: string): { days?: any[]; error?: string } {
       if (!b.format) return { error: 'Bloque ' + (i + 1) + ' de ' + DAY_FULL[d.dow] + ' no tiene "format".' };
       if (!Array.isArray(b.lines) || b.lines.length === 0) return { error: 'Bloque ' + (b.name ?? b.format) + ' de ' + DAY_FULL[d.dow] + ' no tiene lineas.' };
       for (const l of b.lines) {
-        if (typeof l.text !== 'string' || !l.text) return { error: 'Hay una linea sin "text" en ' + DAY_FULL[d.dow] + '.' };
+        if (!l.content && typeof l.text === 'string' && l.text) {
+          l.content = { '*': l.text };
+          delete l.text;
+        }
+        if (!l.content || typeof l.content !== 'object' || Object.values(l.content).filter((v) => typeof v === 'string' && v).length === 0) {
+          return { error: 'Hay una linea vacia o sin texto en ' + DAY_FULL[d.dow] + ' (bloque ' + (b.name ?? b.format) + ').' };
+        }
+        if (!Array.isArray(l.patterns)) l.patterns = [];
+        if (!l.id) l.id = 'l' + Math.random().toString(36).slice(2, 7);
       }
     }
   }
@@ -280,8 +310,11 @@ export function CoachPanel() {
                         </div>
                         <div className="editrow">
                           <label className="editlabel half">Formato
-                            <input className="loginput" value={b.format}
-                              onChange={(e) => mut((c) => { c[di].blocks[bi].format = e.target.value; })} />
+                            <select className="loginput" value={b.format}
+                              onChange={(e) => mut((c) => { c[di].blocks[bi].format = e.target.value; })}>
+                              {!FORMATS.includes(b.format) && <option value={b.format}>{b.format}</option>}
+                              {FORMATS.map((f) => <option key={f} value={f}>{f.split('_').join(' ')}</option>)}
+                            </select>
                           </label>
                           <label className="editlabel half">Nombre
                             <input className="loginput" value={b.name ?? ''}
@@ -292,7 +325,7 @@ export function CoachPanel() {
                           <input className="loginput" value={b.scheme ?? ''}
                             onChange={(e) => mut((c) => { c[di].blocks[bi].scheme = e.target.value; })} />
                         </label>
-                        <label className="editlabel">Lineas (una por renglon; adaptable: texto :: patron)
+                        <label className="editlabel">Lineas: una por renglon. Niveles con | (RX: 5x5 @ 70% | ELITE: 5x5 @ 75%). Adaptable con :: patron
                           <textarea className="loginput" rows={Math.max(3, (b.lines ?? []).length + 1)}
                             defaultValue={linesToText(b)}
                             onBlur={(e) => mut((c) => { c[di].blocks[bi].lines = textToLines(e.target.value); })} />
@@ -330,7 +363,7 @@ export function CoachPanel() {
                         scheme: '',
                         note: '',
                         logType: null,
-                        lines: [{ text: 'Nueva linea' }],
+                        lines: [{ id: 'l1', content: { '*': 'Nueva linea' }, patterns: [] }],
                       });
                     })}>+ Anadir bloque</button>
                   </div>

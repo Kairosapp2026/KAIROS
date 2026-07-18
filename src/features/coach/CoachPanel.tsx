@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { WEEKS } from '../../data/mockData';
+import { WEEKS, CYCLES } from '../../data/mockData';
 import { ZONES } from '../../core';
 
 interface Athlete {
@@ -243,6 +243,7 @@ export function CoachPanel() {
 
   const [progTrack, setProgTrack] = useState<'CF' | 'HX' | null>(null);
   const [progWeek, setProgWeek] = useState<string | null>(null);
+  const [cycleInfo, setCycleInfo] = useState<any>(null);
   const [days, setDays] = useState<any[] | null>(null);
   const [editMode, setEditMode] = useState<'visual' | 'json'>('visual');
   const [jsonText, setJsonText] = useState('');
@@ -270,16 +271,23 @@ export function CoachPanel() {
     setEditMode('visual');
     setOpenDay(null);
     setDays(null);
-    sb.from('published_weeks').select('data').eq('track', tk).eq('week_start', ws).maybeSingle()
+    sb.from('published_weeks').select('data, cycle').eq('track', tk).eq('week_start', ws).maybeSingle()
       .then(async ({ data }) => {
-        if (data && data.data) { setDays(JSON.parse(JSON.stringify(data.data))); return; }
+        if (data && data.data) {
+          setDays(JSON.parse(JSON.stringify(data.data)));
+          setCycleInfo((data as any).cycle ?? { ...CYCLES[tk] });
+          return;
+        }
         const prev = isoDate(addDays(new Date(ws + 'T00:00:00'), -7));
-        const { data: prevRow } = await sb.from('published_weeks').select('data').eq('track', tk).eq('week_start', prev).maybeSingle();
+        const { data: prevRow } = await sb.from('published_weeks').select('data, cycle').eq('track', tk).eq('week_start', prev).maybeSingle();
         if (prevRow && prevRow.data) {
           setDays(JSON.parse(JSON.stringify(prevRow.data)));
-          setPubMsg('Semana nueva: cargada como copia de la anterior. Editala y publica.');
+          const pc = (prevRow as any).cycle;
+          setCycleInfo(pc ? { ...pc, week: Math.min(Number(pc.week) + 1, Number(pc.totalWeeks)) } : { ...CYCLES[tk] });
+          setPubMsg('Semana nueva: copia de la anterior con el ciclo avanzado. Editala y publica.');
         } else {
           setDays(JSON.parse(JSON.stringify(WEEKS[tk])));
+          setCycleInfo({ ...CYCLES[tk] });
           setPubMsg('Semana nueva: cargada la plantilla base. Editala y publica.');
         }
       });
@@ -304,10 +312,14 @@ export function CoachPanel() {
     if (res.error) { setValErr(res.error); return; }
     setValErr('');
     setPubBusy(progTrack);
+    const cy = cycleInfo ?? { ...CYCLES[progTrack] };
+    cy.week = Math.max(1, Number(cy.week) || 1);
+    cy.totalWeeks = Math.max(cy.week, Number(cy.totalWeeks) || cy.week);
     const { error: err } = await sb.from('published_weeks').upsert({
       track: progTrack,
       week_start: progWeek,
       data: res.days,
+      cycle: cy,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'track,week_start' });
     setPubBusy(null);
@@ -430,6 +442,33 @@ export function CoachPanel() {
 
         {editMode === 'visual' && days && (
           <>
+            {cycleInfo && (
+              <div className="editday">
+                <div className="editdaybody" style={{ borderTop: 'none' }}>
+                  <p className="eyebrow" style={{ marginTop: 6 }}>Ciclo de esta semana - lo ve el atleta</p>
+                  <div className="editrow">
+                    <label className="editlabel half">Bloque
+                      <input className="loginput" value={cycleInfo.block ?? ''}
+                        onChange={(e) => setCycleInfo({ ...cycleInfo, block: e.target.value })} />
+                    </label>
+                    <label className="editlabel half" style={{ display: 'flex', gap: 8 }}>
+                      <span style={{ flex: 1 }}>Semana
+                        <input className="loginput" type="number" min={1} value={cycleInfo.week ?? 1}
+                          onChange={(e) => setCycleInfo({ ...cycleInfo, week: Number(e.target.value) })} />
+                      </span>
+                      <span style={{ flex: 1 }}>de
+                        <input className="loginput" type="number" min={1} value={cycleInfo.totalWeeks ?? 1}
+                          onChange={(e) => setCycleInfo({ ...cycleInfo, totalWeeks: Number(e.target.value) })} />
+                      </span>
+                    </label>
+                  </div>
+                  <label className="editlabel">Objetivo del bloque
+                    <textarea className="loginput" rows={2} value={cycleInfo.goal ?? ''}
+                      onChange={(e) => setCycleInfo({ ...cycleInfo, goal: e.target.value })} />
+                  </label>
+                </div>
+              </div>
+            )}
             {days.map((d: any, di: number) => (
               <div key={d.dow} className="editday">
                 <button className="editdayhead" onClick={() => setOpenDay(openDay === d.dow ? null : d.dow)}>

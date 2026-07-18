@@ -10,13 +10,15 @@ export type DayStatus = 'done' | 'partial';
 export function useTodaySession(track: Track, level: string, dow: number | null) {
   const sb = supabase;
   const [week, setWeek] = useState<Day[]>(WEEKS[track]);
+  const [cycle, setCycle] = useState(CYCLES[track]);
 
   useEffect(() => {
     setWeek(WEEKS[track]);
+    setCycle(CYCLES[track]);
     if (!sb) return;
     const iso = new Date().toISOString().slice(0, 10);
     sb.from('published_weeks')
-      .select('data')
+      .select('data, cycle')
       .eq('track', track)
       .lte('week_start', iso)
       .order('week_start', { ascending: false })
@@ -24,6 +26,7 @@ export function useTodaySession(track: Track, level: string, dow: number | null)
       .maybeSingle()
       .then(({ data }) => {
         if (data && data.data) setWeek(data.data as Day[]);
+        if (data && (data as any).cycle) setCycle((data as any).cycle);
       });
   }, [track]);
 
@@ -112,7 +115,7 @@ export function useTodaySession(track: Track, level: string, dow: number | null)
   return {
     week,
     day,
-    cycle: CYCLES[track],
+    cycle,
     levels: LEVELS[track],
     duration, setDuration,
     pains, setPains,

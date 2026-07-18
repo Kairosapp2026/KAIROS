@@ -20,7 +20,9 @@ export interface AdaptedSession {
 const levelText = (line: Line, level: string): string =>
   line.content[level] ?? line.content['*'] ?? Object.values(line.content)[0] ?? '';
 
-function adaptLine(line: Line, pains: Pain[], rules: Rule[], level: string): AdaptedLine {
+const WOD_FORMATS = ['AMRAP', 'EMOM', 'FOR_TIME', 'INTERVALOS', 'TEAM'];
+
+function adaptLine(line: Line, pains: Pain[], rules: Rule[], level: string, isWod: boolean): AdaptedLine {
   const base = levelText(line, level);
   for (const pain of pains) {
     if (pain.type === 'calentar') continue;
@@ -30,7 +32,7 @@ function adaptLine(line: Line, pains: Pain[], rules: Rule[], level: string): Ada
       );
       if (rule) {
         return {
-          text: rule.substitute,
+          text: isWod && rule.substituteWod ? rule.substituteWod : rule.substitute,
           adapted: { zone: pain.zone, type: pain.type, original: base, note: rule.note },
         };
       }
@@ -50,7 +52,7 @@ export function adaptSession(
   const adapted: AdaptedBlock[] = blocks.map((b) => ({
     ...b,
     visible: duration === '2h' || b.tag === 'NUCLEO',
-    lines: b.lines.map((l) => adaptLine(l, pains, rules, level)),
+    lines: b.lines.map((l) => adaptLine(l, pains, rules, level, WOD_FORMATS.includes(b.format))),
   }));
   return {
     blocks: adapted,

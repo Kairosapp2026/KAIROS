@@ -36,6 +36,7 @@ export interface Rule {
   zone: string;
   severity: Exclude<PainType, 'calentar'>;
   substitute: string;
+  substituteWod?: string;
   note: string;
 }
 

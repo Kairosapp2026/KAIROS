@@ -53,6 +53,7 @@ const AUTO_TAGS: [RegExp, string[]][] = [
   [/pistol/i, ['squat', 'unilateral_rodilla']],
   [/goblet|air squat|sentadilla/i, ['squat']],
   [/box step|step[- ]?over|step[- ]?up/i, ['unilateral_rodilla']],
+  [/overhead lunge|zancada overhead|walking lunge overhead/i, ['unilateral_rodilla', 'push_vertical']],
   [/split squat|zancada|lunge|estocada|bulgar/i, ['unilateral_rodilla']],
   [/sandbag lunge|zancada con saco/i, ['unilateral_rodilla', 'raquis_carga']],
   // --- Bisagra y tirones de suelo ---
@@ -60,7 +61,7 @@ const AUTO_TAGS: [RegExp, string[]][] = [
   [/deadlift|peso muerto|rdl|rumano/i, ['hinge', 'raquis_carga']],
   [/good ?morning/i, ['hinge', 'raquis_carga']],
   [/rack pull|hip thrust|puente de gluteo|glute bridge/i, ['hinge']],
-  [/back extension|extension lumbar|nordic/i, ['hinge']],
+  [/back extension|extension lumbar|hip extension|extension de cadera|nordic/i, ['hinge']],
   [/swing/i, ['hinge']],
   [/americana/i, ['push_vertical']],
   // --- Halterofilia ---
@@ -79,7 +80,8 @@ const AUTO_TAGS: [RegExp, string[]][] = [
   [/push[- ]?up|flexion/i, ['push_horizontal', 'muneca_ext']],
   [/fondos|ring dip|\bdips?\b/i, ['push_horizontal']],
   // --- Tirones y colgados ---
-  [/rope climb|cuerda/i, ['colgado', 'pull_vertical', 'grip']],
+  [/rope climb|cuerda|legless/i, ['colgado', 'pull_vertical', 'grip']],
+  [/pegboard/i, ['colgado', 'pull_vertical', 'grip']],
   [/toes to bar|t2b|knee raise|k2e/i, ['colgado', 'core_flexion']],
   [/muscle[- ]?up/i, ['colgado', 'pull_vertical']],
   [/pull[- ]?up|dominada|chin[- ]?up|chest to bar|c2b/i, ['colgado', 'pull_vertical']],
@@ -93,14 +95,15 @@ const AUTO_TAGS: [RegExp, string[]][] = [
   [/\bbici\b|bike|assault|echo/i, ['ciclico_bajo']],
   [/burpee broad jump|burpee salto/i, ['impacto', 'push_horizontal']],
   [/burpee/i, ['impacto', 'push_horizontal']],
-  [/double under|single under|comba/i, ['impacto']],
+  [/double under|single under|crossover|comba/i, ['impacto']],
   [/box jump|salto al cajon|broad jump|salto/i, ['impacto']],
   [/carrera|correr|\brun\b|sprint|shuttle/i, ['impacto', 'ciclico_alto']],
   // --- Trineos y acarreos (HYROX / strongman) ---
   [/sled push|empuje de trineo|empujar trineo/i, ['squat']],
-  [/sled pull|arrastre de trineo|arrastrar trineo/i, ['pull_horizontal', 'grip']],
+  [/sled pull|sled drag|arrastre de trineo|arrastrar trineo/i, ['pull_horizontal', 'grip']],
   [/trineo/i, ['squat']],
   [/farmer|acarreo|carry/i, ['grip']],
+  [/d[- ]?ball|slam ?ball|ball over shoulder|balon al hombro/i, ['hinge', 'raquis_carga', 'grip']],
   [/sandbag|saco|bear hug/i, ['raquis_carga', 'grip']],
   [/yoke|yugo/i, ['raquis_carga']],
   // --- Core ---

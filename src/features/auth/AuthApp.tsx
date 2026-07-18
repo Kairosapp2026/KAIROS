@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { TodaySession } from '../today/TodaySession';
 import { CoachPanel } from '../coach/CoachPanel';
 import { Landing } from '../landing/Landing';
+import { Legal } from '../landing/Legal';
 
 interface Profile {
   id: string;
@@ -72,11 +73,12 @@ const TRACK_INFO: Record<Track, { name: string; desc: string }> = {
 
 type AuthMode = 'signup' | 'signin' | 'reset';
 
-function AuthScreen({ initialMode, onBack }: { initialMode: AuthMode; onBack: () => void }) {
+function AuthScreen({ initialMode, onBack, onLegal }: { initialMode: AuthMode; onBack: () => void; onLegal: () => void }) {
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [accept, setAccept] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
@@ -100,6 +102,7 @@ function AuthScreen({ initialMode, onBack }: { initialMode: AuthMode; onBack: ()
     if (mode === 'signup' && name.trim().length < 2) return setError('Escribe tu nombre.');
     if (!email.includes('@')) return setError('Ese email no parece valido.');
     if (password.length < 6) return setError('La contrasena necesita al menos 6 caracteres.');
+    if (mode === 'signup' && !accept) return setError('Para crear la cuenta, acepta los terminos y la politica de privacidad.');
     setBusy(true);
     const { error: err } =
       mode === 'signup'
@@ -138,6 +141,16 @@ function AuthScreen({ initialMode, onBack }: { initialMode: AuthMode; onBack: ()
           autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
       )}
 
+      {mode === 'signup' && (
+        <label className="consent">
+          <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} />
+          <span>
+            He leido y acepto los{' '}
+            <button className="linkinline" onClick={(e) => { e.preventDefault(); onLegal(); }}>terminos y la politica de privacidad</button>,
+            incluido el tratamiento de mis datos de entrenamiento y molestias fisicas para adaptar mis sesiones.
+          </span>
+        </label>
+      )}
       {error && <p className="formerror">{error}</p>}
       {info && <p className="forminfo">{info}</p>}
 
@@ -231,7 +244,8 @@ export function AuthApp() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [busy, setBusy] = useState(false);
   const [coachView, setCoachView] = useState<'panel' | 'atleta'>('panel');
-  const [gate, setGate] = useState<'landing' | 'signup' | 'signin'>('landing');
+  const [gate, setGate] = useState<'landing' | 'signup' | 'signin' | 'legal'>('landing');
+  const [legalFrom, setLegalFrom] = useState<'landing' | 'signup' | 'signin'>('landing');
   const [recovery, setRecovery] = useState(false);
 
   useEffect(() => {
@@ -282,9 +296,13 @@ export function AuthApp() {
   if (recovery && session) return <NewPasswordScreen onDone={() => setRecovery(false)} />;
 
   if (!session) {
+    if (gate === 'legal')
+      return <Legal onBack={() => setGate(legalFrom)} />;
     if (gate === 'landing')
-      return <Landing onStart={() => setGate('signup')} onLogin={() => setGate('signin')} />;
-    return <AuthScreen initialMode={gate} onBack={() => setGate('landing')} />;
+      return <Landing onStart={() => setGate('signup')} onLogin={() => setGate('signin')}
+        onLegal={() => { setLegalFrom('landing'); setGate('legal'); }} />;
+    return <AuthScreen initialMode={gate} onBack={() => setGate('landing')}
+      onLegal={() => { setLegalFrom(gate); setGate('legal'); }} />;
   }
 
   if (!profile) return <TrackChoice onChoose={chooseTrack} busy={busy} />;

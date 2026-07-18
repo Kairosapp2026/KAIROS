@@ -386,3 +386,11 @@ h3 { font-size: 14px; color: var(--accent); margin: 10px 0 4px; }
 .editblock { border: 1px dashed var(--border); border-radius: 10px; padding: 4px 12px 12px; margin-top: 14px; }
 .chip.danger { border-color: #a04545; color: #e08a8a; }
 select.loginput { appearance: none; }
+
+.legal section { margin-top: 26px; }
+.legal h2 { font-size: 20px; margin-bottom: 10px; }
+.legal p { color: #c4cddc; font-size: 14px; line-height: 1.65; margin-bottom: 10px; }
+.legal strong { color: #f2f5fb; }
+.consent { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; font-size: 12.5px; color: var(--muted); line-height: 1.5; text-align: left; }
+.consent input { margin-top: 3px; width: 18px; height: 18px; accent-color: #2dd4a7; }
+.linkinline { background: none; border: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; }

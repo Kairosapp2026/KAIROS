@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 interface Props {
   onStart: () => void;
   onLogin: () => void;
+  onLegal: () => void;
 }
 
 const SLIDES = [
@@ -144,7 +145,7 @@ const FAQS = [
   },
 ];
 
-export function Landing({ onStart, onLogin }: Props) {
+export function Landing({ onStart, onLogin, onLegal }: Props) {
   return (
     <main className="screen landing">
 
@@ -231,6 +232,9 @@ export function Landing({ onStart, onLogin }: Props) {
       <footer className="landfoot">
         <span className="logo">KAIROS</span>
         <p className="note center">El momento oportuno. El mejor entreno posible, hoy.</p>
+        <p className="note center">
+          <button className="linkinline" onClick={onLegal}>Aviso legal · Privacidad · Terminos · Cookies</button>
+        </p>
       </footer>
     </main>
   );
